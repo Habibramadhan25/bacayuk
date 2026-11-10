@@ -526,26 +526,21 @@ export const initialActivity: ActivityLog[] = [
 
 // Helper to initialize local storage
 export const initLocalStorage = () => {
-  // FORCE OVERWRITE ALL LOCALSTORAGE ON REFRESH FOR THE USER
-  localStorage.removeItem('bacayuk_books');
-  localStorage.removeItem('bacayuk_categories');
-  localStorage.removeItem('bacayuk_users');
-  localStorage.removeItem('bacayuk_history');
-  localStorage.removeItem('bacayuk_activity');
-
-  if (!localStorage.getItem('bacayuk_books')) {
-    localStorage.setItem('bacayuk_books', JSON.stringify(initialBooks));
-  }
-  if (!localStorage.getItem('bacayuk_categories')) {
-    localStorage.setItem('bacayuk_categories', JSON.stringify(initialCategories));
-  }
-  if (!localStorage.getItem('bacayuk_users')) {
-    localStorage.setItem('bacayuk_users', JSON.stringify(initialUsers));
-  }
-  if (!localStorage.getItem('bacayuk_history')) {
-    localStorage.setItem('bacayuk_history', JSON.stringify(initialHistory));
-  }
-  if (!localStorage.getItem('bacayuk_activity')) {
-    localStorage.setItem('bacayuk_activity', JSON.stringify(initialActivity));
-  }
+  try {
+    if (!localStorage.getItem('bacayuk_books')) {
+      localStorage.setItem('bacayuk_books', JSON.stringify(initialBooks));
+    }
+    if (!localStorage.getItem('bacayuk_categories')) {
+      localStorage.setItem('bacayuk_categories', JSON.stringify(initialCategories));
+    }
+    if (!localStorage.getItem('bacayuk_users')) {
+      localStorage.setItem('bacayuk_users', JSON.stringify(initialUsers));
+    }
+    if (!localStorage.getItem('bacayuk_history')) {
+      localStorage.setItem('bacayuk_history', JSON.stringify(initialHistory));
+    }
+    if (!localStorage.getItem('bacayuk_activity')) {
+      localStorage.setItem('bacayuk_activity', JSON.stringify(initialActivity));
+    }
+  } catch {}
 };

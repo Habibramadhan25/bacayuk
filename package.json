@@ -9,7 +9,7 @@
     "dev:mobile": "npm --prefix admin--main run dev:mobile",
     "dev:server": "npm --prefix admin--main run dev:server",
     "db:init": "npm --prefix admin--main run db:init",
-    "build": "npm --prefix admin--main run build",
+    "build": "npm --prefix admin--main run build && node -e \"const fs=require('fs'); fs.cpSync('admin--main/apps/admin/dist', 'dist', {recursive: true});\"",
     "lint": "npm --prefix admin--main run lint"
   }
 }

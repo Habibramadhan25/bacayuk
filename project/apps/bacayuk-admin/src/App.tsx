@@ -78,6 +78,9 @@ function App() {
           <Route path="activity" element={<Activity />} />
           <Route path="settings" element={<Settings />} />
         </Route>
+
+        {/* Fallback agar halaman tidak blank saat akses rute tak dikenal */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );

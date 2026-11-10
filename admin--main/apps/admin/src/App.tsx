@@ -18,9 +18,13 @@ import Circulation from './pages/Circulation';
 import { initLocalStorage } from './lib/mockData';
 
 function App() {
-  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(
-    () => sessionStorage.getItem('bacayuk_admin_auth') === 'true'
-  );
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(() => {
+    try {
+      return sessionStorage.getItem('bacayuk_admin_auth') === 'true';
+    } catch {
+      return false;
+    }
+  });
 
   useEffect(() => {
     initLocalStorage();
@@ -31,7 +35,11 @@ function App() {
     } catch {}
 
     const handleAuthChange = () => {
-      setIsAdminAuthenticated(sessionStorage.getItem('bacayuk_admin_auth') === 'true');
+      try {
+        setIsAdminAuthenticated(sessionStorage.getItem('bacayuk_admin_auth') === 'true');
+      } catch {
+        setIsAdminAuthenticated(false);
+      }
     };
 
     window.addEventListener('storage', handleAuthChange);
@@ -43,8 +51,15 @@ function App() {
     };
   }, []);
 
+  // Deteksi basename secara dinamis: jika dibuka via path /admin (misal proxy lokal) gunakan /admin,
+  // jika dibuka di root Vercel (https://bacayuk.vercel.app/) gunakan string kosong agar tidak blank.
+  const basename =
+    typeof window !== 'undefined' && window.location.pathname.startsWith('/admin')
+      ? '/admin'
+      : '';
+
   return (
-    <Router basename="/admin">
+    <Router basename={basename}>
       <Routes>
         {/* Admin Routes */}
         <Route path="/register" element={<Register />} />

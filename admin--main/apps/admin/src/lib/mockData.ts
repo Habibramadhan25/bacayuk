@@ -900,36 +900,38 @@ export const initialLoans: CirculationLoan[] = [
 
 // Helper to initialize local storage
 export const initLocalStorage = () => {
-  if (!localStorage.getItem('bacayuk_books')) {
-    localStorage.setItem('bacayuk_books', JSON.stringify(initialBooks));
-  }
-  if (!localStorage.getItem('bacayuk_categories')) {
-    localStorage.setItem('bacayuk_categories', JSON.stringify(initialCategories));
-  }
-  if (!localStorage.getItem('bacayuk_users')) {
-    localStorage.setItem('bacayuk_users', JSON.stringify(initialUsers));
-  }
-  if (!localStorage.getItem('bacayuk_history')) {
-    localStorage.setItem('bacayuk_history', JSON.stringify(initialHistory));
-  }
-  if (!localStorage.getItem('bacayuk_activity')) {
-    localStorage.setItem('bacayuk_activity', JSON.stringify(initialActivity));
-  }
-  if (!localStorage.getItem('bacayuk_reviews')) {
-    localStorage.setItem('bacayuk_reviews', JSON.stringify(initialReviews));
-  }
-  if (!localStorage.getItem('bacayuk_banners')) {
-    localStorage.setItem('bacayuk_banners', JSON.stringify(initialBanners));
-  }
-  if (!localStorage.getItem('bacayuk_curations')) {
-    localStorage.setItem('bacayuk_curations', JSON.stringify(initialCurations));
-  }
-  if (!localStorage.getItem('bacayuk_circulation')) {
-    localStorage.setItem('bacayuk_circulation', JSON.stringify(initialLoans));
-  }
-  if (!localStorage.getItem('bacayuk_loans')) {
-    localStorage.setItem('bacayuk_loans', JSON.stringify(initialLoans));
-  }
+  try {
+    if (!localStorage.getItem('bacayuk_books')) {
+      localStorage.setItem('bacayuk_books', JSON.stringify(initialBooks));
+    }
+    if (!localStorage.getItem('bacayuk_categories')) {
+      localStorage.setItem('bacayuk_categories', JSON.stringify(initialCategories));
+    }
+    if (!localStorage.getItem('bacayuk_users')) {
+      localStorage.setItem('bacayuk_users', JSON.stringify(initialUsers));
+    }
+    if (!localStorage.getItem('bacayuk_history')) {
+      localStorage.setItem('bacayuk_history', JSON.stringify(initialHistory));
+    }
+    if (!localStorage.getItem('bacayuk_activity')) {
+      localStorage.setItem('bacayuk_activity', JSON.stringify(initialActivity));
+    }
+    if (!localStorage.getItem('bacayuk_reviews')) {
+      localStorage.setItem('bacayuk_reviews', JSON.stringify(initialReviews));
+    }
+    if (!localStorage.getItem('bacayuk_banners')) {
+      localStorage.setItem('bacayuk_banners', JSON.stringify(initialBanners));
+    }
+    if (!localStorage.getItem('bacayuk_curations')) {
+      localStorage.setItem('bacayuk_curations', JSON.stringify(initialCurations));
+    }
+    if (!localStorage.getItem('bacayuk_circulation')) {
+      localStorage.setItem('bacayuk_circulation', JSON.stringify(initialLoans));
+    }
+    if (!localStorage.getItem('bacayuk_loans')) {
+      localStorage.setItem('bacayuk_loans', JSON.stringify(initialLoans));
+    }
+  } catch {}
 
   // Auto-heal data jika belum lengkap dengan tanggal terkini
   try {
