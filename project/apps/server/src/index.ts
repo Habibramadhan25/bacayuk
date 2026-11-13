@@ -71,3 +71,6 @@ app.listen(PORT, async () => {
     console.warn('⚠️ Gagal inisialisasi awal database:', err.message);
   }
 });
+
+export default app;
+

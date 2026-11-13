@@ -2,14 +2,15 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Star } from 'lucide-react';
 import { Book, initialBooks } from '../../lib/mockData';
+import { getApiUrl } from '../../lib/api';
 
 const DashboardSiswa = () => {
   const navigate = useNavigate();
   const [recommendedBooks, setRecommendedBooks] = useState<Book[]>([]);
 
   useEffect(() => {
-    // Coba ambil dari Backend (Real API)
-    fetch('http://localhost:5000/api/books')
+    // Coba ambil dari Backend (Real API via Vercel binding / proxy)
+    fetch(getApiUrl('/api/books'))
       .then(res => {
         if (!res.ok) throw new Error('API down');
         return res.json();
