@@ -28,6 +28,7 @@ import { Book, BookChapter, BookReview, initialBooks } from '../lib/mockData';
 import { getBookFile } from '../lib/fileStorage';
 import { realtime } from '../lib/realtime';
 import { ReviewStorage } from '../lib/reviewStorage';
+import { getApiUrl } from '../lib/api';
 
 const AdminPdfPageCanvas: React.FC<{
   pdfDoc: any;
@@ -252,7 +253,7 @@ const Books = () => {
       });
 
       try {
-        fetch('/api/realtime/state', {
+        fetch(getApiUrl('/api/realtime/state'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ books: updatedBooks }),

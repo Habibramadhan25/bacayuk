@@ -31,6 +31,7 @@ import {
   initLocalStorage 
 } from '../lib/mockData';
 import { realtime } from '../lib/realtime';
+import { getApiUrl } from '../lib/api';
 
 export const Circulation: React.FC = () => {
   initLocalStorage();
@@ -72,7 +73,7 @@ export const Circulation: React.FC = () => {
     };
 
     // Ambil daftar pengguna terdaftar dari backend jika tersedia
-    fetch('/api/auth/users')
+    fetch(getApiUrl('/api/auth/users'))
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {

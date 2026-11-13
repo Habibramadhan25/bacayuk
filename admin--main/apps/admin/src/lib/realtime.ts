@@ -5,6 +5,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { getApiUrl } from './api';
 
 export type RealtimeEventType = 
   | 'BOOKS_UPDATED'
@@ -67,7 +68,7 @@ class RealtimeClient {
         this.eventSource.close();
       }
 
-      this.eventSource = new EventSource('/api/realtime/stream');
+      this.eventSource = new EventSource(getApiUrl('/api/realtime/stream'));
 
       this.eventSource.addEventListener('connected', () => {
         this.isConnected = true;
@@ -155,7 +156,7 @@ class RealtimeClient {
 
     // 2. Kirim ke Server via HTTP POST agar diteruskan ke browser lain / siswa
     try {
-      fetch('/api/realtime/publish', {
+      fetch(getApiUrl('/api/realtime/publish'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

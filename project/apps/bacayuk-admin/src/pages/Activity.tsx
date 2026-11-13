@@ -1,13 +1,18 @@
 import { useState, useEffect } from 'react';
-import type { ActivityLog } from '../lib/mockData';
+import { initialActivity, type ActivityLog } from '../lib/mockData';
 import { Activity as ActivityIcon, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const Activity = () => {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
-    localStorage.removeItem('bacayuk_activity'); // Force clear data lama
-    setLogs([]);
+    try {
+      const saved = localStorage.getItem('bacayuk_activity');
+      const data = saved ? JSON.parse(saved) : [];
+      setLogs(data.length > 0 ? data : initialActivity);
+    } catch {
+      setLogs(initialActivity);
+    }
   }, []);
 
   const getIcon = (status: string) => {

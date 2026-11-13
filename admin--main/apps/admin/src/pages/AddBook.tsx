@@ -23,6 +23,7 @@ import { saveBookFile } from '../lib/fileStorage';
 import { ReviewStorage } from '../lib/reviewStorage';
 import { realtime } from '../lib/realtime';
 import { AdminNotificationStorage } from '../lib/notificationStorage';
+import { getApiUrl } from '../lib/api';
 
 function parseTextIntoChapters(text: string, defaultTitle: string): BookChapter[] {
   const clean = text.replace(/\r\n/g, '\n').trim();
@@ -521,7 +522,7 @@ const AddBook = () => {
 
       // 4. Sinkronkan seluruh list buku ke server
       try {
-        fetch('/api/realtime/state', {
+        fetch(getApiUrl('/api/realtime/state'), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ books: finalBooksList }),

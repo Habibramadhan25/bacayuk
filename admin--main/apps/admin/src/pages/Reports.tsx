@@ -56,6 +56,7 @@ import {
 } from '../lib/mockData';
 import { realtime } from '../lib/realtime';
 import { AdminNotificationStorage } from '../lib/notificationStorage';
+import { getApiUrl } from '../lib/api';
 
 export const Reports: React.FC = () => {
   initLocalStorage();
@@ -542,7 +543,7 @@ export const Reports: React.FC = () => {
 
       // Kirim real-time update ke server
       realtime.publish('BOOKS_UPDATED', { books: updatedBooks });
-      fetch('/api/realtime/state', {
+      fetch(getApiUrl('/api/realtime/state'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ books: updatedBooks }),

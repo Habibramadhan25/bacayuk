@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { initialUsers, type User } from '../lib/mockData';
 import { Users as UsersIcon, Search, MoreVertical, UserX } from 'lucide-react';
 import { realtime } from '../lib/realtime';
+import { getApiUrl } from '../lib/api';
 
 const Users = () => {
   const [users, setUsers] = useState<User[]>(() => {
@@ -19,7 +20,7 @@ const Users = () => {
 
   useEffect(() => {
     // Ambil daftar pengguna terdaftar dari backend jika tersedia
-    fetch('/api/auth/users')
+    fetch(getApiUrl('/api/auth/users'))
       .then((res) => res.json())
       .then((json) => {
         if (json.success && Array.isArray(json.data)) {

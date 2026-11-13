@@ -7,6 +7,9 @@ export default defineConfig(({ command }) => ({
   // Saat production build (Vercel deployment), gunakan '/' agar seluruh asset di-load tanpa 404.
   base: command === 'serve' ? '/admin/' : '/',
   plugins: [react()],
+  define: {
+    'process.env.SERVER_URL': JSON.stringify(process.env.SERVER_URL || ''),
+  },
   server: {
     host: true,
     port: 5173,
