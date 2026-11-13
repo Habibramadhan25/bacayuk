@@ -33,7 +33,7 @@
       "root": "project/apps/backend",
       "framework": "express"
     },
-    "server-2": {
+    "project-server": {
       "root": "project/apps/server",
       "framework": "express"
     }
