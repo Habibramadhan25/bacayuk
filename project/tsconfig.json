@@ -15,15 +15,7 @@
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "paths": {
-      "react": [
-        "./apps/bacayuk-admin/node_modules/@types/react"
-      ],
-      "react/*": [
-        "./apps/bacayuk-admin/node_modules/@types/react/*"
-      ]
-    }
+    "skipLibCheck": true
   },
   "include": [
     "apps/bacayuk-admin/src/**/*"
@@ -31,6 +23,7 @@
   "exclude": [
     "node_modules",
     "apps/mobile",
-    "apps/server"
+    "apps/server",
+    "apps/backend"
   ]
 }
