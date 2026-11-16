@@ -1,26 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { 
-  BookOpen, 
-  Users, 
-  Tags, 
-  BookCheck, 
+import {
+  Activity,
+  BookCheck,
+  BookOpen,
+  LibraryBig,
   Star,
+  Tags,
   TrendingUp,
-  Activity
+  Users,
 } from 'lucide-react';
-import { 
-  AreaChart, 
-  Area, 
-  XAxis, 
-  YAxis, 
-  CartesianGrid, 
-  Tooltip, 
-  ResponsiveContainer,
-  BarChart,
+import {
+  Area,
+  AreaChart,
   Bar,
-  Legend
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-import { initLocalStorage, Book, User, Category } from '../lib/mockData';
+import { Book, Category, initLocalStorage, User } from '../lib/mockData';
 
 const dataReads = [
   { name: 'Sen', total: 1200 },
@@ -47,122 +47,120 @@ const Dashboard = () => {
     categories: 0,
     reads: 0,
     completed: 0,
-    ratings: 0
+    ratings: 0,
   });
 
   useEffect(() => {
     initLocalStorage();
-    const books: Book[] = JSON.parse(localStorage.getItem('bacayuk_books') || '[]');
-    const users: User[] = JSON.parse(localStorage.getItem('bacayuk_users') || '[]');
-    const categories: Category[] = JSON.parse(localStorage.getItem('bacayuk_categories') || '[]');
+    try {
+      const books: Book[] = JSON.parse(localStorage.getItem('bacayuk_books') || '[]');
+      const users: User[] = JSON.parse(localStorage.getItem('bacayuk_users') || '[]');
+      const categories: Category[] = JSON.parse(localStorage.getItem('bacayuk_categories') || '[]');
+      const safeBooks = Array.isArray(books) ? books : [];
+      const safeUsers = Array.isArray(users) ? users : [];
+      const safeCategories = Array.isArray(categories) ? categories : [];
 
-    setStats({
-      books: books.length,
-      users: users.length,
-      categories: categories.length,
-      reads: books.reduce((acc, curr) => acc + curr.readers, 0),
-      completed: users.reduce((acc, curr) => acc + curr.booksCompleted, 0),
-      ratings: 12543 // Mock data for total ratings
-    });
+      setStats({
+        books: safeBooks.length,
+        users: safeUsers.length,
+        categories: safeCategories.length,
+        reads: safeBooks.reduce((acc, curr) => acc + (Number(curr.readers) || 0), 0),
+        completed: safeUsers.reduce((acc, curr) => acc + (Number((curr as any).booksCompleted) || 0), 0),
+        ratings: 12543,
+      });
+    } catch {
+      setStats({ books: 0, users: 0, categories: 0, reads: 0, completed: 0, ratings: 12543 });
+    }
   }, []);
 
   const statCards = [
-    { title: 'Total Buku', value: stats.books, icon: BookOpen, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+12%' },
-    { title: 'Total Pengguna', value: stats.users, icon: Users, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+5%' },
-    { title: 'Kategori', value: stats.categories, icon: Tags, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+2%' },
-    { title: 'Total Pembacaan', value: stats.reads.toLocaleString(), icon: TrendingUp, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+18%' },
-    { title: 'Buku Selesai', value: stats.completed, icon: BookCheck, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+8%' },
-    { title: 'Total Rating', value: stats.ratings.toLocaleString(), icon: Star, color: 'bg-[#ebdcb8]', iconColor: 'text-[#8a6d1c]', trend: '+15%' },
+    { title: 'Koleksi Buku', value: stats.books, icon: BookOpen, note: '+12% bulan ini' },
+    { title: 'Anggota Terdaftar', value: stats.users, icon: Users, note: '+5% anggota aktif' },
+    { title: 'Kategori Rak', value: stats.categories, icon: Tags, note: 'Tertata rapi' },
+    { title: 'Total Sirkulasi Baca', value: stats.reads.toLocaleString(), icon: TrendingUp, note: '+18% aktivitas' },
+    { title: 'Buku Selesai Dibaca', value: stats.completed, icon: BookCheck, note: '+8% penyelesaian' },
+    { title: 'Ulasan Masuk', value: stats.ratings.toLocaleString(), icon: Star, note: '+15% ulasan' },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-black font-serif text-[#2a160b]">Dashboard</h1>
-          <p className="text-[#5a3a22] font-medium">Ringkasan statistik platform BacaYuk</p>
-        </div>
-        <div className="flex items-center gap-2 bg-[#f9f6f0] px-4 py-2 rounded-lg border border-[#d4c3a3] shadow-sm">
-          <Activity className="w-5 h-5 text-[#8a6d1c]" />
-          <span className="text-sm font-bold text-[#3a2012]">Status Sistem: <span className="text-emerald-700">Online</span></span>
+      <div className="rounded-2xl border border-[#cfe0d4] dark:border-[#2a3d34] bg-gradient-to-r from-[#163126] to-[#244738] text-[#eef7f1] p-6 md:p-7 shadow-sm relative overflow-hidden">
+        <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-[#d4a94e]/20 blur-2xl" />
+        <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/15 text-xs font-semibold tracking-wide uppercase mb-3">
+              <LibraryBig className="w-4 h-4 text-[#f0d27e]" /> Dashboard Petugas
+            </div>
+            <h1 className="text-2xl md:text-3xl font-black font-serif">Ringkasan Layanan Perpustakaan</h1>
+            <p className="text-[#cfe3d8] mt-1">Pantau koleksi, anggota, dan aktivitas baca dari satu meja kerja admin.</p>
+          </div>
+          <div className="bg-white/10 border border-white/15 rounded-xl px-4 py-3 min-w-[220px]">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <Activity className="w-4 h-4 text-[#a6f0c2]" /> Sistem Operasional
+            </div>
+            <p className="text-xs text-[#cfe3d8] mt-1">Layanan katalog & sirkulasi berjalan normal</p>
+          </div>
         </div>
       </div>
 
-      {/* Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
         {statCards.map((stat, index) => (
-          <div key={index} className="bg-[#f9f6f0] rounded-xl border border-[#d4c3a3] p-6 shadow-sm hover-lift">
-            <div className="flex items-center justify-between mb-4">
-              <div className={`p-3 rounded-lg ${stat.color} border border-[#d4c3a3]`}>
-                <stat.icon className={`w-6 h-6 ${stat.iconColor}`} />
+          <div
+            key={index}
+            className="bg-[#f8fbf8] dark:bg-[#15211c] rounded-xl border border-[#d7e3da] dark:border-[#2a3d34] p-5 shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div className="p-3 rounded-xl bg-[#e7f1ea] dark:bg-[#22352d] border border-[#cfe0d4] dark:border-[#355244] text-[#2f5b43] dark:text-[#cfead9]">
+                <stat.icon className="w-5 h-5" />
               </div>
-              <div className="flex items-center gap-1 text-emerald-700 text-sm font-bold bg-emerald-100/50 border border-emerald-200 px-2 py-1 rounded-full">
-                <TrendingUp className="w-4 h-4" />
-                {stat.trend}
-              </div>
+              <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-[#f4ead0] text-[#7a5c16] dark:bg-[#3a321f] dark:text-[#efd28a] border border-[#e8d8a8] dark:border-[#5a4a2a]">
+                {stat.note}
+              </span>
             </div>
-            <div>
-              <p className="text-sm font-bold text-[#8a6d1c] mb-1">{stat.title}</p>
-              <h3 className="text-2xl font-black text-[#2a160b]">{stat.value}</h3>
-            </div>
+            <p className="text-sm font-semibold text-[#567564] dark:text-[#9ec0ad]">{stat.title}</p>
+            <h3 className="text-2xl font-black text-[#183126] dark:text-[#edf7f1] mt-1">{stat.value}</h3>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Activity Chart */}
-        <div className="bg-[#f9f6f0] p-6 rounded-xl border border-[#d4c3a3] shadow-sm">
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-[#2a160b]">Aktivitas Membaca</h3>
-            <p className="text-sm font-medium text-[#5a3a22]">Jumlah halaman yang dibaca 7 hari terakhir</p>
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-[#f8fbf8] dark:bg-[#15211c] p-6 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34] shadow-sm">
+          <div className="mb-5">
+            <h3 className="text-lg font-bold text-[#183126] dark:text-[#edf7f1]">Aktivitas Membaca Mingguan</h3>
+            <p className="text-sm text-[#567564] dark:text-[#9ec0ad]">Tren kunjungan baca 7 hari terakhir</p>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={dataReads} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
-                  <linearGradient id="colorTotal" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#8a6d1c" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#8a6d1c" stopOpacity={0}/>
+                  <linearGradient id="colorTotalAdmin" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2f7a55" stopOpacity={0.35} />
+                    <stop offset="95%" stopColor="#2f7a55" stopOpacity={0} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d4c3a3" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8a6d1c', fontWeight: 'bold' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8a6d1c', fontWeight: 'bold' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #d4c3a3', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: '#f9f6f0', color: '#3a2012', fontWeight: 'bold' }}
-                  cursor={{ stroke: '#8a6d1c', strokeWidth: 1, strokeDasharray: '3 3' }}
-                />
-                <Area 
-                  type="monotone" 
-                  dataKey="total" 
-                  stroke="#8a6d1c" 
-                  strokeWidth={3}
-                  fillOpacity={1} 
-                  fill="url(#colorTotal)" 
-                />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cfe0d4" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#567564', fontWeight: 600 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#567564', fontWeight: 600 }} />
+                <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #cfe0d4', backgroundColor: '#f8fbf8', color: '#183126' }} />
+                <Area type="monotone" dataKey="total" stroke="#2f7a55" strokeWidth={3} fillOpacity={1} fill="url(#colorTotalAdmin)" />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        {/* Categories Chart */}
-        <div className="bg-[#f9f6f0] p-6 rounded-xl border border-[#d4c3a3] shadow-sm">
-          <div className="mb-6">
-            <h3 className="text-lg font-bold text-[#2a160b]">Buku Populer per Kategori</h3>
-            <p className="text-sm font-medium text-[#5a3a22]">Distribusi pembacaan berdasarkan kategori</p>
+        <div className="bg-[#f8fbf8] dark:bg-[#15211c] p-6 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34] shadow-sm">
+          <div className="mb-5">
+            <h3 className="text-lg font-bold text-[#183126] dark:text-[#edf7f1]">Popularitas Kategori Rak</h3>
+            <p className="text-sm text-[#567564] dark:text-[#9ec0ad]">Distribusi minat baca per kategori</p>
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={dataCategories} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#d4c3a3" />
-                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#8a6d1c', fontWeight: 'bold' }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#8a6d1c', fontWeight: 'bold' }} />
-                <Tooltip 
-                  contentStyle={{ borderRadius: '8px', border: '1px solid #d4c3a3', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)', backgroundColor: '#f9f6f0', color: '#3a2012', fontWeight: 'bold' }}
-                  cursor={{ fill: '#ebdcb8' }}
-                />
-                <Bar dataKey="value" fill="#8a6d1c" radius={[4, 4, 0, 0]} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#cfe0d4" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#567564', fontWeight: 600 }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fill: '#567564', fontWeight: 600 }} />
+                <Tooltip contentStyle={{ borderRadius: '10px', border: '1px solid #cfe0d4', backgroundColor: '#f8fbf8', color: '#183126' }} cursor={{ fill: '#e7f1ea' }} />
+                <Bar dataKey="value" fill="#d4a94e" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

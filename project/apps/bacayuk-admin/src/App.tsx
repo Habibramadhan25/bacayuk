@@ -59,6 +59,7 @@ function App() {
           <Route path="favorit" element={<FavoritSiswa />} />
           <Route path="riwayat" element={<RiwayatSiswa />} />
           <Route path="buku/:id" element={<DetailBukuSiswa />} />
+          <Route path="baca/:id" element={<BacaBukuSiswa />} />
           <Route path="profil" element={<ProfilSiswa />} />
         </Route>
 

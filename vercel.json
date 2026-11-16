@@ -1,55 +1,13 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "services": {
-    "admin": {
-      "root": "admin--main/apps/admin",
-      "framework": "vite",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "server",
-          "format": "url",
-          "env": "SERVER_URL"
-        }
-      ]
-    },
-    "server": {
-      "root": "admin--main/apps/server",
-      "framework": "express"
-    },
-    "bacayuk-admin": {
-      "root": "project/apps/bacayuk-admin",
-      "framework": "vite",
-      "bindings": [
-        {
-          "type": "service",
-          "service": "backend",
-          "format": "url",
-          "env": "BACKEND_URL"
-        }
-      ]
-    },
-    "backend": {
-      "root": "project/apps/backend",
-      "framework": "express"
-    },
-    "project-server": {
-      "root": "project/apps/server",
-      "framework": "express"
-    }
-  },
+  "framework": "vite",
+  "installCommand": "npm install --prefix project/apps/bacayuk-admin",
+  "buildCommand": "npm run build --prefix project/apps/bacayuk-admin",
+  "outputDirectory": "project/apps/bacayuk-admin/dist",
   "rewrites": [
     {
-      "source": "/api/(.*)",
-      "destination": {
-        "service": "server"
-      }
-    },
-    {
       "source": "/(.*)",
-      "destination": {
-        "service": "admin"
-      }
+      "destination": "/index.html"
     }
   ]
 }

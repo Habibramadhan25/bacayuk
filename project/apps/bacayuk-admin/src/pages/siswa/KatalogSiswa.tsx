@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Star, Bookmark } from 'lucide-react';
+import { Search, Star } from 'lucide-react';
 import { Book, initialBooks } from '../../lib/mockData';
 import { getApiUrl } from '../../lib/api';
+import { handleBookCoverError, resolveBookCover } from '../../lib/bookCover';
 
 const KatalogSiswa = () => {
   const navigate = useNavigate();
@@ -21,19 +22,24 @@ const KatalogSiswa = () => {
       .then(data => {
         setBooks(data);
       })
-      .catch(err => {
+      .catch(() => {
         // Fallback ke data lokal jika server backend belum hidup
-        const savedBooks = localStorage.getItem('bacayuk_books');
-        if (savedBooks) {
-          setBooks(JSON.parse(savedBooks).filter((b: Book) => b.status === 'Published'));
-        } else {
+        try {
+          const savedBooks = localStorage.getItem('bacayuk_books');
+          const allBooks = savedBooks ? JSON.parse(savedBooks) : initialBooks;
+          const list = Array.isArray(allBooks) ? allBooks : initialBooks;
+          setBooks(list.filter((b: Book) => b.status === 'Published'));
+        } catch {
           setBooks(initialBooks.filter(b => b.status === 'Published'));
         }
       });
 
-    const savedFavorites = localStorage.getItem('bacayuk_favorites');
-    if (savedFavorites) {
-      setFavorites(JSON.parse(savedFavorites));
+    try {
+      const savedFavorites = localStorage.getItem('bacayuk_favorites');
+      const favs = savedFavorites ? JSON.parse(savedFavorites) : [];
+      setFavorites(Array.isArray(favs) ? favs : []);
+    } catch {
+      setFavorites([]);
     }
   }, []);
 
@@ -60,13 +66,13 @@ const KatalogSiswa = () => {
   });
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto">
+    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto text-[#2a160b] dark:text-[#f3e9dc]">
       
       {/* Header & Search */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div>
-          <h1 className="text-3xl font-black font-serif text-[#2a160b] mb-1">Koleksi Buku</h1>
-          <p className="text-[#5a3a22] text-sm">Temukan berbagai buku menarik untuk dibaca.</p>
+          <h1 className="text-3xl font-black font-serif text-[#2a160b] dark:text-[#f6eadc] mb-1">Koleksi Buku</h1>
+          <p className="text-[#5a3a22] dark:text-[#d9c6b2] text-sm">Temukan berbagai buku menarik untuk dibaca dengan suasana ruang baca yang hangat.</p>
         </div>
         
         <div className="relative w-full md:w-80">
@@ -75,7 +81,7 @@ const KatalogSiswa = () => {
             placeholder="Cari buku, penulis, atau kategori..." 
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[#f4f0e6] border-none rounded-full text-[#2a160b] placeholder-[#a49373] focus:outline-none focus:ring-2 focus:ring-[#d4c3a3] transition-shadow text-sm"
+            className="w-full pl-10 pr-4 py-3 bg-[#f4f0e6] dark:bg-[#26201c] border border-[#eadfcd] dark:border-[#3a2e27] rounded-full text-[#2a160b] dark:text-[#f3e9dc] placeholder-[#a49373] dark:placeholder-[#8f7a62] focus:outline-none focus:ring-2 focus:ring-[#d4c3a3] dark:focus:ring-[#5b4636] transition-shadow text-sm"
           />
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a49373]" />
         </div>
@@ -89,8 +95,8 @@ const KatalogSiswa = () => {
             onClick={() => setSelectedCategory(category)}
             className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${
               selectedCategory === category
-                ? 'bg-[#ebdcb8] text-[#2a160b] border-[#ebdcb8] shadow-sm'
-                : 'bg-transparent text-[#5a3a22] hover:bg-[#f4f0e6] border-transparent'
+                ? 'bg-[#e8d6b8] dark:bg-[#5a422e] text-[#2a160b] dark:text-[#f6eadc] border-[#e0caa6] dark:border-[#6d5238] shadow-sm'
+                : 'bg-transparent text-[#5a3a22] dark:text-[#d9c6b2] hover:bg-[#f4f0e6] dark:hover:bg-[#26201c] border-transparent'
             }`}
           >
             {category}
@@ -101,10 +107,10 @@ const KatalogSiswa = () => {
       {/* Pilihan Minggu Ini */}
       <section>
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-serif text-[#2a160b]">
+          <h2 className="text-2xl font-bold font-serif text-[#2a160b] dark:text-[#f6eadc]">
             Pilihan Minggu Ini
           </h2>
-          <button className="text-sm font-medium text-[#5a3a22] hover:text-[#2a160b] transition-colors">
+          <button className="text-sm font-medium text-[#5a3a22] dark:text-[#d9c6b2] hover:text-[#2a160b] dark:hover:text-white transition-colors">
             Lihat semua
           </button>
         </div>
@@ -115,13 +121,15 @@ const KatalogSiswa = () => {
               <div 
                 key={book.id} 
                 onClick={() => navigate(`/siswa/buku/${book.id}`)}
-                className="group cursor-pointer bg-white p-3 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all hover:border-[#ebdcb8]"
+                className="group cursor-pointer bg-white dark:bg-[#211b17] p-3 rounded-2xl border border-[#efe5d8] dark:border-[#3a2e27] shadow-sm hover:shadow-md transition-all hover:border-[#d8c3a6] dark:hover:border-[#5b4636]"
               >
                 <div className="relative overflow-hidden rounded-xl mb-3 aspect-[2/3] border border-gray-50">
-                  <img 
-                    src={book.coverUrl} 
-                    alt={book.title} 
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                  <img
+                    src={resolveBookCover(book)}
+                    alt={book.title}
+                    loading="lazy"
+                    onError={handleBookCoverError}
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                   <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-[10px] font-bold text-[#3a2012] shadow-sm z-10">
                     <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {book.rating}
@@ -134,9 +142,9 @@ const KatalogSiswa = () => {
                   </div>
                 </div>
                 <div className="px-1">
-                  <h3 className="font-bold text-[#2a160b] text-sm leading-tight group-hover:text-[#8a6d1c] transition-colors line-clamp-1">{book.title}</h3>
-                  <p className="text-xs text-[#5a3a22] mt-1 mb-2 truncate">{book.author}</p>
-                  <span className="text-[10px] font-bold text-[#5a3a22] bg-[#f4f0e6] px-2 py-1 rounded-md uppercase tracking-wider">
+                  <h3 className="font-bold text-[#2a160b] dark:text-[#f3e9dc] text-sm leading-tight group-hover:text-[#8a6d1c] dark:group-hover:text-[#d4b07a] transition-colors line-clamp-1">{book.title}</h3>
+                  <p className="text-xs text-[#5a3a22] dark:text-[#cdb89f] mt-1 mb-2 truncate">{book.author}</p>
+                  <span className="text-[10px] font-bold text-[#5a3a22] dark:text-[#e4d2bb] bg-[#f4f0e6] dark:bg-[#2d2520] px-2 py-1 rounded-md uppercase tracking-wider">
                     {book.category}
                   </span>
                 </div>
@@ -146,8 +154,8 @@ const KatalogSiswa = () => {
         ) : (
           <div className="py-20 text-center">
             <Search className="w-12 h-12 text-[#d4c3a3] mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#2a160b] mb-2 font-serif">Buku tidak ditemukan</h3>
-            <p className="text-[#5a3a22]">Coba ubah kata kunci pencarian atau pilih kategori lain.</p>
+            <h3 className="text-xl font-bold text-[#2a160b] dark:text-[#f6eadc] mb-2 font-serif">Buku tidak ditemukan</h3>
+            <p className="text-[#5a3a22] dark:text-[#d9c6b2]">Coba ubah kata kunci pencarian atau pilih kategori lain.</p>
           </div>
         )}
       </section>

@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Settings, Moon, Sun, Search, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { ArrowLeft, ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
 import { Book, initialBooks } from '../../lib/mockData';
 
 const BacaBukuSiswa = () => {
@@ -16,19 +16,26 @@ const BacaBukuSiswa = () => {
 
   useEffect(() => {
     // Load book data
-    const savedBooks = localStorage.getItem('bacayuk_books');
-    let allBooks = initialBooks;
-    if (savedBooks) {
-      allBooks = JSON.parse(savedBooks);
-    }
-    
-    const foundBook = allBooks.find(b => b.id === id);
-    if (foundBook) {
+    try {
+      const savedBooks = localStorage.getItem('bacayuk_books');
+      const allBooks = savedBooks ? JSON.parse(savedBooks) : initialBooks;
+      const list = Array.isArray(allBooks) ? allBooks : initialBooks;
+      const foundBook = list.find((b: Book) => b.id === id) || null;
       setBook(foundBook);
+    } catch {
+      setBook(initialBooks.find((b) => b.id === id) || null);
     }
   }, [id]);
 
-  if (!book) return <div className="p-10 text-center">Loading...</div>;
+  if (!book) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center bg-[#F9F7F1] text-[#2a160b]">
+        <h2 className="text-2xl font-bold mb-2">Buku tidak ditemukan</h2>
+        <p className="text-sm text-[#5a3a22] mb-6">Buku yang ingin kamu baca tidak tersedia.</p>
+        <button onClick={() => navigate(-1)} className="px-5 py-2.5 rounded-xl bg-[#3a2012] text-[#f9f6f0] font-bold">Kembali</button>
+      </div>
+    );
+  }
 
   const totalPages = 15; // Mock total pages
 
