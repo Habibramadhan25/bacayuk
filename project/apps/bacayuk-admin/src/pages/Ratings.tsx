@@ -67,7 +67,7 @@ const Ratings = () => {
                   <td className="p-4">
                     <div className="flex items-center gap-2">
                       <div className="flex">{renderStars(book.rating || 0)}</div>
-                      <span className="font-bold text-[#183126] dark:text-[#edf7f1]">{(book.rating || 0).toFixed ? (book.rating || 0).toFixed(1) : book.rating}</span>
+                      <span className="font-bold text-[#183126] dark:text-[#edf7f1]">{Number(book.rating || 0).toFixed(1)}</span>
                     </div>
                   </td>
                   <td className="p-4 text-[#355243] dark:text-[#dcebe2]">
@@ -115,7 +115,7 @@ const Ratings = () => {
               <div className="flex items-center justify-center py-12 text-[#567564] dark:text-[#9ec0ad] flex-col text-center">
                 <MessageSquare className="w-12 h-12 mb-3 text-[#cfe0d4] dark:text-[#355244]" />
                 <p>Belum ada ulasan teks terperinci untuk buku ini.</p>
-                <p className="text-sm mt-1">Rating rata-rata <strong className="text-[#2f5b43] dark:text-[#cfead9]">{(selectedBook.rating || 0).toFixed ? (selectedBook.rating || 0).toFixed(1) : selectedBook.rating}</strong> dari aktivitas pembaca.</p>
+                <p className="text-sm mt-1">Rating rata-rata <strong className="text-[#2f5b43] dark:text-[#cfead9]">{Number(selectedBook.rating || 0).toFixed(1)}</strong> dari aktivitas pembaca.</p>
               </div>
             </div>
             <div className="p-4 border-t border-[#d7e3da] dark:border-[#2a3d34] bg-[#edf4ef] dark:bg-[#1b2923] text-right">
