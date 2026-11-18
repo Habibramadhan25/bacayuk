@@ -75,36 +75,24 @@ const services = [
     command: 'npm run dev',
   },
   {
-    name: 'ADMIN ',
+    name: 'WEB   ',
     color: colors.green,
     cwd: path.join(ROOT_DIR, 'apps', 'admin'),
     command: 'npm run dev',
-  },
-  {
-    name: 'MOBILE',
-    color: colors.magenta,
-    cwd: path.join(ROOT_DIR, 'apps', 'mobile'),
-    command: 'npm run start -- --port 8082',
-  },
-  {
-    name: 'PROXY ',
-    color: colors.yellow,
-    cwd: ROOT_DIR,
-    command: 'node scripts/dev-proxy.mjs',
   },
 ];
 
 console.clear();
 console.log('\n' + colors.bright + colors.blue + '╔════════════════════════════════════════════════════════════════════════╗' + colors.reset);
-console.log(colors.bright + colors.blue + '║' + colors.reset + colors.bright + '                     📚 BACAYUK — DEVELOPMENT SERVER                    ' + colors.reset + colors.blue + '║' + colors.reset);
+console.log(colors.bright + colors.blue + '║' + colors.reset + colors.bright + '                     📚 BACAYUK — UNIFIED WEB & SERVER                  ' + colors.reset + colors.blue + '║' + colors.reset);
 console.log(colors.blue + '╚════════════════════════════════════════════════════════════════════════╝' + colors.reset);
 console.log('');
-console.log(`  📱 ${colors.bright}Aplikasi Siswa (Web)${colors.reset}    :  ${colors.bright}${colors.yellow}http://localhost:8081${colors.reset}`);
-console.log(`  👑 ${colors.bright}Portal Admin${colors.reset}            :  ${colors.bright}${colors.green}http://localhost:8081/admin${colors.reset}`);
-console.log(`  ⚙️  ${colors.bright}Backend REST API${colors.reset}        :  ${colors.cyan}http://localhost:8081/api${colors.reset}`);
+console.log(`  📱 ${colors.bright}Aplikasi Siswa (Web)${colors.reset}    :  ${colors.bright}${colors.yellow}http://localhost:5173${colors.reset}`);
+console.log(`  👑 ${colors.bright}Portal Admin${colors.reset}            :  ${colors.bright}${colors.green}http://localhost:5173/admin${colors.reset}`);
+console.log(`  ⚙️  ${colors.bright}Backend REST API${colors.reset}        :  ${colors.cyan}http://localhost:5000/api${colors.reset}`);
 console.log('');
 console.log(colors.blue + '──────────────────────────────────────────────────────────────────────────' + colors.reset);
-console.log(`  💡 ${colors.bright}Buka browser di:${colors.reset} ${colors.yellow}http://localhost:8081${colors.reset}`);
+console.log(`  💡 ${colors.bright}Cukup buka satu link:${colors.reset} ${colors.yellow}http://localhost:5173${colors.reset}`);
 console.log(`  💡 ${colors.gray}Tekan Ctrl + C untuk menghentikan seluruh layanan.${colors.reset}`);
 if (!isVerbose) {
   console.log(`  💡 ${colors.gray}(Log detail disembunyikan. Jalankan 'npm run dev -- --verbose' untuk melihat log lengkap)${colors.reset}\n`);

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BookCopy, 
@@ -96,22 +96,22 @@ const AdminLayout = () => {
       localStorage.removeItem('bacayuk_admin_user');
     } catch {}
     window.dispatchEvent(new Event('auth_changed'));
-    navigate('/login');
+    navigate('/admin/login');
   };
 
   const navItems = [
-    { name: 'Dashboard', path: '/', icon: LayoutDashboard },
-    { name: 'Kelola Buku', path: '/books', icon: BookCopy },
-    { name: 'Tambah Buku', path: '/books/add', icon: PlusCircle },
-    { name: 'Kategori', path: '/categories', icon: Tags },
-    { name: 'Pengguna', path: '/users', icon: Users },
-    { name: 'Banner & Kurasi', path: '/curations', icon: Sparkles },
-    { name: 'Sirkulasi & Pinjam', path: '/circulation', icon: Repeat },
-    { name: 'Laporan & Ekspor', path: '/reports', icon: FileBarChart },
-    { name: 'Rating Buku', path: '/ratings', icon: Star },
-    { name: 'Riwayat Bacaan', path: '/history', icon: History },
-    { name: 'Activity Log', path: '/activity', icon: Activity },
-    { name: 'Pengaturan', path: '/settings', icon: Settings },
+    { name: 'Dashboard', path: '/admin', icon: LayoutDashboard },
+    { name: 'Kelola Buku', path: '/admin/books', icon: BookCopy },
+    { name: 'Tambah Buku', path: '/admin/books/add', icon: PlusCircle },
+    { name: 'Kategori', path: '/admin/categories', icon: Tags },
+    { name: 'Pengguna', path: '/admin/users', icon: Users },
+    { name: 'Banner & Kurasi', path: '/admin/curations', icon: Sparkles },
+    { name: 'Sirkulasi & Pinjam', path: '/admin/circulation', icon: Repeat },
+    { name: 'Laporan & Ekspor', path: '/admin/reports', icon: FileBarChart },
+    { name: 'Rating Buku', path: '/admin/ratings', icon: Star },
+    { name: 'Riwayat Bacaan', path: '/admin/history', icon: History },
+    { name: 'Activity Log', path: '/admin/activity', icon: Activity },
+    { name: 'Pengaturan', path: '/admin/settings', icon: Settings },
   ];
 
   return (
@@ -145,7 +145,7 @@ const AdminLayout = () => {
               <NavLink
                 key={item.name}
                 to={item.path}
-                end={item.path === '/'}
+                end={item.path === '/admin'}
                 className={({ isActive }: { isActive: boolean }) => 
                   `flex items-center gap-3 px-3 py-2.5 rounded-lg font-bold transition-colors ${
                     isActive 
@@ -160,7 +160,15 @@ const AdminLayout = () => {
             ))}
           </div>
 
-          <div className="p-4 border-t border-[#d4c3a3]">
+          <div className="p-4 border-t border-[#d4c3a3] space-y-2">
+            <Link 
+              to="/"
+              className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg font-bold text-[#8a6d1c] bg-[#ebdcb8]/40 hover:bg-[#ebdcb8] border border-[#d4c3a3]/50 transition-colors"
+              title="Buka tampilan perpustakaan digital siswa"
+            >
+              <BookOpen className="w-5 h-5 text-[#8a6d1c]" />
+              Mode Siswa Web
+            </Link>
             <button 
               onClick={handleLogout}
               className="flex items-center gap-3 px-3 py-2.5 w-full rounded-lg font-bold text-[#5a3a22] hover:bg-red-50 hover:text-red-700 transition-colors"
@@ -365,7 +373,7 @@ const AdminLayout = () => {
                       <button 
                         onClick={() => {
                           setShowProfileMenu(false);
-                          navigate('/settings');
+                          navigate('/admin/settings');
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-[#5a3a22] hover:bg-[#ebdcb8] hover:text-[#3a2012] font-bold rounded-lg transition-colors flex items-center gap-2"
                       >
@@ -374,7 +382,7 @@ const AdminLayout = () => {
                       <button 
                         onClick={() => {
                           setShowProfileMenu(false);
-                          navigate('/activity');
+                          navigate('/admin/activity');
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-[#5a3a22] hover:bg-[#ebdcb8] hover:text-[#3a2012] font-bold rounded-lg transition-colors flex items-center gap-2"
                       >

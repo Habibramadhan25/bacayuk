@@ -73,7 +73,7 @@ const Login: React.FC = () => {
           localStorage.removeItem('bacayuk_admin_user');
         } catch {}
         window.dispatchEvent(new Event('auth_changed'));
-        navigate('/');
+        navigate('/admin');
       } else {
         setError('Username atau kata sandi salah.');
         setLoading(false);
