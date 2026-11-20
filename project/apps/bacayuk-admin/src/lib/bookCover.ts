@@ -51,7 +51,10 @@ export function resolveBookCover(item: any): string {
 }
 
 export function resolveUserAvatar(item: any): string {
-  const raw = pickFirstString(item?.avatar, item?.photo, item?.image, item?.profileImage, item?.avatarUrl);
+  const raw =
+    typeof item === 'string' && item.trim().length > 0
+      ? item.trim()
+      : pickFirstString(item?.avatar, item?.photo, item?.image, item?.profileImage, item?.avatarUrl);
   return raw || USER_AVATAR_FALLBACK;
 }
 

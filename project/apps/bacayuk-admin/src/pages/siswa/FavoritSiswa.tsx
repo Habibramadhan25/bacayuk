@@ -1,36 +1,51 @@
-﻿import React, { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Bookmark, HeartCrack, Search, Star } from 'lucide-react';
-import { Book, initialBooks } from '../../lib/mockData';
+import type { Book } from '../../lib/mockData';
+import { api } from '../../lib/api';
 import { handleBookCoverError, resolveBookCover } from '../../lib/bookCover';
+import { useLanguage } from '../../lib/language';
+import { getStudentSession } from '../../lib/session';
 
 const FavoritSiswa = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [books, setBooks] = useState<Book[]>([]);
   const [favorites, setFavorites] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
+  const studentId = getStudentSession()?.id;
 
-  useEffect(() => {
+  const load = async () => {
+    if (!studentId) { setLoading(false); return; }
     try {
-      const savedBooks = localStorage.getItem('bacayuk_books');
-      const allBooks: Book[] = savedBooks ? JSON.parse(savedBooks) : initialBooks;
-      const published = (Array.isArray(allBooks) ? allBooks : initialBooks).filter((b: Book) => b.status === 'Published');
-      const savedFavorites = localStorage.getItem('bacayuk_favorites');
-      const favIds: string[] = savedFavorites ? JSON.parse(savedFavorites) : [];
+      const [favIds, allBooks] = await Promise.all([
+        api.get<string[]>(`/api/favorites?studentId=${encodeURIComponent(studentId)}`),
+        api.get<Book[]>('/api/books'),
+      ]);
       const safeFavs = Array.isArray(favIds) ? favIds : [];
+      const safeBooks = Array.isArray(allBooks) ? allBooks : [];
       setFavorites(safeFavs);
-      setBooks(published.filter(b => safeFavs.includes(b.id)));
+      setBooks(safeBooks.filter(b => safeFavs.includes(b.id)));
     } catch {
-      setBooks([]);
       setFavorites([]);
+      setBooks([]);
+    } finally {
+      setLoading(false);
     }
-  }, []);
+  };
 
-  const toggleFavorite = (bookId: string) => {
-    const newFavorites = favorites.filter(id => id !== bookId);
-    setFavorites(newFavorites);
-    localStorage.setItem('bacayuk_favorites', JSON.stringify(newFavorites));
-    setBooks(prev => prev.filter(b => b.id !== bookId));
+  useEffect(() => { void load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [studentId]);
+
+  const toggleFavorite = async (bookId: string) => {
+    if (!studentId) return;
+    try {
+      await api.post('/api/favorites/toggle', { studentId, bookId });
+      setFavorites(prev => prev.filter(id => id !== bookId));
+      setBooks(prev => prev.filter(b => b.id !== bookId));
+    } catch {
+      // ignore
+    }
   };
 
   const filteredBooks = books.filter(book =>
@@ -39,68 +54,42 @@ const FavoritSiswa = () => {
   );
 
   return (
-    <div className="space-y-6 text-[#2a160b] dark:text-[#f3e9dc]">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 text-[#2a160b] dark:text-[#f3e9dc]">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-black font-serif text-[#2a160b] dark:text-[#f6eadc]">Buku Favorit</h1>
-          <p className="text-[#6b4a2d] dark:text-[#d9c6b2] text-sm mt-1">Koleksi buku yang kamu simpan untuk dibaca nanti.</p>
+          <h1 className="text-3xl font-black font-serif text-[#3a2012] dark:text-[#f6eadc] flex items-center gap-3"><Bookmark className="w-8 h-8 text-[#8a6d1c] dark:text-[#d4b07a]" /> {t('fav.title')}</h1>
+          <p className="text-[#5a3a22] dark:text-[#d9c6b2] mt-2">{t('fav.desc')}</p>
         </div>
+        {favorites.length > 0 && (
+          <div className="relative w-full md:w-72">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#8a6d1c] dark:text-[#d4b07a]" />
+            <input type="text" placeholder={t('fav.searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-[#211b17] border border-[#eadfcd] dark:border-[#3a2e27] rounded-xl text-sm focus:ring-2 focus:ring-[#d4c3a3]/30 dark:focus:ring-[#5b4636]/40 focus:border-[#8a6d1c] dark:focus:border-[#d4b07a] outline-none transition-all placeholder:text-[#9a7a55] dark:placeholder:text-[#a78967] text-[#2a160b] dark:text-[#f3e9dc]" />
+          </div>
+        )}
       </div>
 
-      {books.length > 0 && (
-        <div className="bg-white dark:bg-[#211b17] p-4 rounded-2xl shadow-sm border border-[#eadfcd] dark:border-[#3a2e27]">
-          <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-[#a49373] dark:text-[#8f7a62]">
-              <Search className="h-5 w-5" />
-            </div>
-            <input
-              type="text"
-              className="block w-full pl-11 pr-4 py-3 border border-[#eadfcd] dark:border-[#3a2e27] rounded-xl bg-[#f7f1e7] dark:bg-[#26201c] text-[#2a160b] dark:text-[#f3e9dc] placeholder-[#a49373] dark:placeholder-[#8f7a62] focus:bg-white dark:focus:bg-[#2b241f] focus:ring-2 focus:ring-[#d4c3a3] dark:focus:ring-[#5b4636] focus:border-transparent outline-none transition-all"
-              placeholder="Cari buku favoritmu..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-        </div>
-      )}
-
-      {books.length === 0 ? (
-        <div className="bg-white dark:bg-[#211b17] rounded-2xl p-16 border border-[#eadfcd] dark:border-[#3a2e27] text-center flex flex-col items-center">
-          <div className="w-20 h-20 bg-[#f3e7d3] dark:bg-[#332823] text-[#8a6d1c] dark:text-[#d4b07a] rounded-full flex items-center justify-center mb-6">
-            <HeartCrack className="w-10 h-10" />
-          </div>
-          <h3 className="text-xl font-bold text-[#2a160b] dark:text-[#f6eadc] mb-2">Belum Ada Favorit</h3>
-          <p className="text-[#6b4a2d] dark:text-[#d9c6b2] max-w-sm mb-6">Kamu belum menambahkan buku ke daftar favorit. Jelajahi katalog untuk menemukan bacaan menarik.</p>
-          <a href="/siswa/katalog" className="px-6 py-3 bg-[#8b5e34] text-white font-bold rounded-xl hover:bg-[#734c2a] transition-colors shadow-md">Jelajahi Katalog</a>
-        </div>
+      {loading ? (
+        <div className="p-16 text-center text-[#6b4a2d] dark:text-[#d9c6b2]">Memuat...</div>
       ) : filteredBooks.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-          {filteredBooks.map((book) => (
-            <div key={book.id} onClick={() => navigate(`/siswa/buku/${book.id}`)} className="bg-white dark:bg-[#211b17] rounded-2xl p-4 shadow-sm border border-[#eadfcd] dark:border-[#3a2e27] hover:shadow-xl transition-all group cursor-pointer relative overflow-hidden flex flex-col h-full">
-              <div className="absolute top-4 right-4 z-10">
-                <button onClick={(e) => { e.stopPropagation(); toggleFavorite(book.id); }} className="w-8 h-8 bg-[#8b5e34] rounded-full flex items-center justify-center text-white shadow-md hover:bg-red-500 transition-colors" title="Hapus dari favorit">
-                  <Bookmark className="w-4 h-4 fill-current" />
-                </button>
+          {filteredBooks.map(book => (
+            <div key={book.id} className="group flex flex-col bg-white dark:bg-[#211b17] rounded-2xl p-3 border border-[#eadfcd] dark:border-[#3a2e27] hover:border-rose-200 dark:hover:border-rose-900/60 hover:shadow-lg transition-all relative">
+              <button onClick={() => void toggleFavorite(book.id)} className="absolute -top-2 -right-2 w-8 h-8 bg-white dark:bg-[#26201c] border border-rose-100 dark:border-rose-900/60 text-rose-500 rounded-full flex items-center justify-center shadow-sm z-10 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors" title={t('fav.removeTitle')}><HeartCrack className="w-4 h-4" /></button>
+              <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-3 shadow-sm cursor-pointer border border-[#eadfcd] dark:border-[#3a2e27]" onClick={() => navigate(`/siswa/buku/${book.id}`)}>
+                <img src={resolveBookCover(book)} alt={book.title} onError={handleBookCoverError} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
               </div>
-              <div className="relative aspect-[3/4] mb-4 overflow-hidden rounded-xl">
-                <img src={resolveBookCover(book)} alt={book.title} loading="lazy" onError={handleBookCoverError} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                  <div className="w-full py-2 bg-white/95 text-[#2a160b] rounded-lg text-sm font-medium flex items-center justify-center gap-2"><BookOpen className="w-4 h-4" /> Baca Sekarang</div>
-                </div>
-              </div>
-              <div className="flex-1 flex flex-col">
-                <div className="flex items-center gap-1 text-xs font-medium text-[#8a6d1c] dark:text-[#d4b07a] mb-2"><Star className="w-3.5 h-3.5 fill-current" /><span>{book.rating || 0}</span></div>
-                <h3 className="font-bold text-[#2a160b] dark:text-[#f3e9dc] line-clamp-2 mb-1 group-hover:text-[#8a6d1c] dark:group-hover:text-[#d4b07a] transition-colors">{book.title}</h3>
-                <p className="text-sm text-[#6b4a2d] dark:text-[#d9c6b2] line-clamp-1 mt-auto">{book.author}</p>
-              </div>
+              <h3 onClick={() => navigate(`/siswa/buku/${book.id}`)} className="font-bold text-[#2a160b] dark:text-[#f6eadc] line-clamp-2 leading-snug mb-1 cursor-pointer hover:text-[#8a6d1c] dark:hover:text-[#e4d2bb] transition-colors">{book.title}</h3>
+              <p className="text-xs text-[#6b4a2d] dark:text-[#d9c6b2] line-clamp-1 mb-3">{book.author}</p>
+              <button onClick={() => navigate(`/siswa/buku/${book.id}`)} className="mt-auto w-full py-2 bg-[#f3e7d3] dark:bg-[#332823] text-[#8b5e34] dark:text-[#e4d2bb] font-bold text-xs rounded-lg hover:bg-[#8b5e34] hover:text-white dark:hover:bg-[#4a3a31] transition-colors flex items-center justify-center gap-1.5"><BookOpen className="w-3.5 h-3.5" /> {t('fav.readNow')}</button>
             </div>
           ))}
         </div>
       ) : (
-        <div className="bg-white dark:bg-[#211b17] rounded-2xl p-12 border border-[#eadfcd] dark:border-[#3a2e27] text-center">
-          <div className="w-16 h-16 bg-[#f3e7d3] dark:bg-[#332823] text-[#8a6d1c] dark:text-[#d4b07a] rounded-full flex items-center justify-center mx-auto mb-4"><Search className="w-8 h-8" /></div>
-          <h3 className="text-lg font-bold text-[#2a160b] dark:text-[#f6eadc] mb-2">Buku tidak ditemukan</h3>
-          <p className="text-[#6b4a2d] dark:text-[#d9c6b2]">Tidak ada buku yang cocok di daftar favoritmu.</p>
+        <div className="bg-white dark:bg-[#211b17] rounded-3xl p-12 text-center border border-dashed border-[#d8c3a6] dark:border-[#4a3a31] shadow-sm">
+          <div className="w-20 h-20 bg-[#f7f1e7] dark:bg-[#26201c] rounded-full flex items-center justify-center mx-auto mb-4"><HeartCrack className="w-10 h-10 text-[#c9a97d] dark:text-[#8a6d1c]" /></div>
+          <h3 className="text-xl font-bold text-[#2a160b] dark:text-[#f6eadc] mb-2">{t('fav.emptyTitle')}</h3>
+          <p className="text-[#6b4a2d] dark:text-[#d9c6b2] max-w-sm mx-auto mb-6">{t('fav.emptyDesc')}</p>
+          <button onClick={() => navigate('/siswa/katalog')} className="inline-flex items-center justify-center px-6 py-2.5 bg-[#8b5e34] text-white font-bold rounded-xl hover:bg-[#734c2a] transition-colors">{t('fav.browse')}</button>
         </div>
       )}
     </div>

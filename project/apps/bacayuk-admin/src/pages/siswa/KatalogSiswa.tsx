@@ -1,165 +1,116 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Star } from 'lucide-react';
-import { Book, initialBooks } from '../../lib/mockData';
-import { getApiUrl } from '../../lib/api';
+import { Search, Star, Heart } from 'lucide-react';
+import type { Book } from '../../lib/mockData';
+import { api } from '../../lib/api';
 import { handleBookCoverError, resolveBookCover } from '../../lib/bookCover';
+import { useLanguage } from '../../lib/language';
+import { getStudentSession } from '../../lib/session';
 
 const KatalogSiswa = () => {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [books, setBooks] = useState<Book[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
   const [favorites, setFavorites] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+  const studentId = getStudentSession()?.id;
 
   useEffect(() => {
-    // Coba ambil dari Backend via Vercel binding / proxy
-    fetch(getApiUrl('/api/books'))
-      .then(res => {
-        if (!res.ok) throw new Error('API down');
-        return res.json();
-      })
-      .then(data => {
-        setBooks(data);
-      })
-      .catch(() => {
-        // Fallback ke data lokal jika server backend belum hidup
-        try {
-          const savedBooks = localStorage.getItem('bacayuk_books');
-          const allBooks = savedBooks ? JSON.parse(savedBooks) : initialBooks;
-          const list = Array.isArray(allBooks) ? allBooks : initialBooks;
-          setBooks(list.filter((b: Book) => b.status === 'Published'));
-        } catch {
-          setBooks(initialBooks.filter(b => b.status === 'Published'));
-        }
-      });
+    let mounted = true;
+    (async () => {
+      try {
+        const booksPromise = api.get<Book[]>('/api/books?status=Published');
+        const favPromise = studentId ? api.get<string[]>(`/api/favorites?studentId=${encodeURIComponent(studentId)}`).catch(() => []) : Promise.resolve([]);
+        const [booksData, favData] = await Promise.all([booksPromise, favPromise]);
+        if (!mounted) return;
+        setBooks(Array.isArray(booksData) ? booksData : []);
+        setFavorites(Array.isArray(favData) ? favData : []);
+      } catch {
+        if (mounted) { setBooks([]); setFavorites([]); }
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [studentId]);
 
+  const toggleFavorite = async (e: React.MouseEvent, bookId: string) => {
+    e.stopPropagation();
+    if (!studentId) return;
     try {
-      const savedFavorites = localStorage.getItem('bacayuk_favorites');
-      const favs = savedFavorites ? JSON.parse(savedFavorites) : [];
-      setFavorites(Array.isArray(favs) ? favs : []);
+      const res = await api.post<{ isFavorite: boolean }>('/api/favorites/toggle', { studentId, bookId });
+      const isFav = !!res?.isFavorite;
+      setFavorites((prev) => isFav ? (prev.includes(bookId) ? prev : [...prev, bookId]) : prev.filter((id) => id !== bookId));
     } catch {
-      setFavorites([]);
+      // ignore
     }
-  }, []);
-
-  const toggleFavorite = (bookId: string) => {
-    let newFavorites;
-    if (favorites.includes(bookId)) {
-      newFavorites = favorites.filter(id => id !== bookId);
-    } else {
-      newFavorites = [...favorites, bookId];
-    }
-    setFavorites(newFavorites);
-    localStorage.setItem('bacayuk_favorites', JSON.stringify(newFavorites));
   };
 
-  const categories = ['Semua', 'Novel', 'Pengembangan Diri', 'Sejarah', 'Motivasi', 'Romance', 'Sains'];
-
+  const categories = [t('siswa.catalog.all'), ...Array.from(new Set(books.map(b => b.category).filter(Boolean)))];
   const filteredBooks = books.filter(book => {
-    const matchesSearch = book.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          book.author.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = selectedCategory === 'Semua' || book.category === selectedCategory || 
-                            (selectedCategory === 'Novel' && book.category === 'Fiksi') || 
-                            (selectedCategory === 'Pengembangan Diri' && book.category === 'Nonfiksi'); // Mapping dummy to design categories
+    const matchesSearch = (book.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || (book.author || '').toLowerCase().includes(searchTerm.toLowerCase());
+    const isAll = selectedCategory === t('siswa.catalog.all') || selectedCategory === 'Semua';
+    const matchesCategory = isAll || book.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
 
   return (
-    <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-5xl mx-auto text-[#2a160b] dark:text-[#f3e9dc]">
-      
-      {/* Header & Search */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
-        <div>
-          <h1 className="text-3xl font-black font-serif text-[#2a160b] dark:text-[#f6eadc] mb-1">Koleksi Buku</h1>
-          <p className="text-[#5a3a22] dark:text-[#d9c6b2] text-sm">Temukan berbagai buku menarik untuk dibaca dengan suasana ruang baca yang hangat.</p>
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 text-[#2a160b] dark:text-[#f3e9dc]">
+      <div className="bg-white dark:bg-[#211b17] rounded-3xl p-6 sm:p-8 shadow-sm border border-[#eadfcd] dark:border-[#3a2e27]">
+        <h1 className="text-3xl font-black font-serif text-[#3a2012] dark:text-[#f6eadc] mb-2">{t('siswa.catalog.title')}</h1>
+        <p className="text-[#5a3a22] dark:text-[#d9c6b2] mb-6">{t('siswa.catalog.desc')}</p>
+
+        <div className="flex flex-col md:flex-row gap-4 mb-8">
+          <div className="relative flex-1">
+            <Search className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-[#8a6d1c] dark:text-[#d4b07a]" />
+            <input type="text" placeholder={t('siswa.catalog.searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-12 pr-4 py-3.5 bg-[#f7f1e7] dark:bg-[#26201c] border border-transparent rounded-xl focus:bg-white dark:focus:bg-[#211b17] focus:ring-4 focus:ring-[#d4c3a3]/30 dark:focus:ring-[#5b4636]/40 focus:border-[#8a6d1c] dark:focus:border-[#d4b07a] outline-none transition-all placeholder:text-[#9a7a55] dark:placeholder:text-[#a78967] font-medium text-[#2a160b] dark:text-[#f3e9dc]" />
+          </div>
         </div>
-        
-        <div className="relative w-full md:w-80">
-          <input 
-            type="text" 
-            placeholder="Cari buku, penulis, atau kategori..." 
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 bg-[#f4f0e6] dark:bg-[#26201c] border border-[#eadfcd] dark:border-[#3a2e27] rounded-full text-[#2a160b] dark:text-[#f3e9dc] placeholder-[#a49373] dark:placeholder-[#8f7a62] focus:outline-none focus:ring-2 focus:ring-[#d4c3a3] dark:focus:ring-[#5b4636] transition-shadow text-sm"
-          />
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#a49373]" />
+
+        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+          {categories.map(cat => (
+            <button key={cat} onClick={() => setSelectedCategory(cat)} className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-colors border ${selectedCategory === cat ? 'bg-[#8b5e34] text-white border-[#8b5e34] shadow-sm' : 'bg-white dark:bg-[#26201c] text-[#5a3a22] dark:text-[#d9c6b2] border-[#eadfcd] dark:border-[#3a2e27] hover:border-[#d4c3a3] dark:hover:border-[#5b4636] hover:bg-[#fdf8f1] dark:hover:bg-[#2f2722]'}`}>{cat}</button>
+          ))}
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="flex overflow-x-auto gap-3 pb-2 scrollbar-hide">
-        {categories.map(category => (
-          <button
-            key={category}
-            onClick={() => setSelectedCategory(category)}
-            className={`px-5 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border ${
-              selectedCategory === category
-                ? 'bg-[#e8d6b8] dark:bg-[#5a422e] text-[#2a160b] dark:text-[#f6eadc] border-[#e0caa6] dark:border-[#6d5238] shadow-sm'
-                : 'bg-transparent text-[#5a3a22] dark:text-[#d9c6b2] hover:bg-[#f4f0e6] dark:hover:bg-[#26201c] border-transparent'
-            }`}
-          >
-            {category}
-          </button>
-        ))}
-      </div>
-
-      {/* Pilihan Minggu Ini */}
-      <section>
+      <div className="bg-white dark:bg-[#211b17] rounded-3xl p-6 sm:p-8 shadow-sm border border-[#eadfcd] dark:border-[#3a2e27]">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold font-serif text-[#2a160b] dark:text-[#f6eadc]">
-            Pilihan Minggu Ini
-          </h2>
-          <button className="text-sm font-medium text-[#5a3a22] dark:text-[#d9c6b2] hover:text-[#2a160b] dark:hover:text-white transition-colors">
-            Lihat semua
-          </button>
+          <h2 className="text-xl font-bold text-[#2a160b] dark:text-[#f6eadc]">{t('siswa.catalog.listTitle')}</h2>
+          <span className="text-sm font-medium text-[#6b4a2d] dark:text-[#d9c6b2] bg-[#f3e7d3] dark:bg-[#332823] px-3 py-1 rounded-full">{filteredBooks.length} {t('siswa.catalog.booksUnit')}</span>
         </div>
-        
-        {filteredBooks.length > 0 ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
-            {filteredBooks.map((book) => (
-              <div 
-                key={book.id} 
-                onClick={() => navigate(`/siswa/buku/${book.id}`)}
-                className="group cursor-pointer bg-white dark:bg-[#211b17] p-3 rounded-2xl border border-[#efe5d8] dark:border-[#3a2e27] shadow-sm hover:shadow-md transition-all hover:border-[#d8c3a6] dark:hover:border-[#5b4636]"
-              >
-                <div className="relative overflow-hidden rounded-xl mb-3 aspect-[2/3] border border-gray-50">
-                  <img
-                    src={resolveBookCover(book)}
-                    alt={book.title}
-                    loading="lazy"
-                    onError={handleBookCoverError}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute top-2 right-2 bg-white/95 backdrop-blur-sm px-2 py-1 rounded-full flex items-center gap-1 text-[10px] font-bold text-[#3a2012] shadow-sm z-10">
-                    <Star className="w-3 h-3 text-amber-400 fill-amber-400" /> {book.rating}
-                  </div>
-                  {/* Hover Overlay Button Placeholder */}
-                  <div className="absolute inset-0 bg-[#2a160b]/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-end justify-center p-3">
-                    <div className="bg-white/90 backdrop-blur-sm text-[#2a160b] text-[10px] font-bold py-1.5 px-3 rounded-full flex items-center gap-1 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 delay-75 shadow-sm">
-                      Baca Sekarang
-                    </div>
-                  </div>
+
+        {loading ? (
+          <div className="p-12 text-center text-[#6b4a2d] dark:text-[#d9c6b2]">Memuat...</div>
+        ) : filteredBooks.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+            {filteredBooks.map(book => (
+              <div key={book.id} onClick={() => navigate(`/siswa/buku/${book.id}`)} className="group cursor-pointer flex flex-col bg-[#f7f1e7] dark:bg-[#26201c] rounded-2xl p-3 border border-[#eadfcd] dark:border-[#3a2e27] hover:border-[#d4c3a3] dark:hover:border-[#5b4636] hover:shadow-md transition-all">
+                <div className="relative aspect-[2/3] rounded-xl overflow-hidden mb-3 shadow-sm border border-[#eadfcd] dark:border-[#3a2e27]">
+                  <img src={resolveBookCover(book)} alt={book.title} onError={handleBookCoverError} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                  <button onClick={(e) => void toggleFavorite(e, book.id)} className={`absolute top-2 right-2 p-2 rounded-full backdrop-blur-md transition-colors ${favorites.includes(book.id) ? 'bg-rose-500/90 text-white shadow-sm' : 'bg-black/30 text-white hover:bg-black/50'}`} title={favorites.includes(book.id) ? t('siswa.catalog.removeFav') : t('siswa.catalog.addFav')}>
+                    <Heart className={`w-4 h-4 ${favorites.includes(book.id) ? 'fill-current' : ''}`} />
+                  </button>
                 </div>
-                <div className="px-1">
-                  <h3 className="font-bold text-[#2a160b] dark:text-[#f3e9dc] text-sm leading-tight group-hover:text-[#8a6d1c] dark:group-hover:text-[#d4b07a] transition-colors line-clamp-1">{book.title}</h3>
-                  <p className="text-xs text-[#5a3a22] dark:text-[#cdb89f] mt-1 mb-2 truncate">{book.author}</p>
-                  <span className="text-[10px] font-bold text-[#5a3a22] dark:text-[#e4d2bb] bg-[#f4f0e6] dark:bg-[#2d2520] px-2 py-1 rounded-md uppercase tracking-wider">
-                    {book.category}
-                  </span>
+                <h3 className="font-bold text-[#2a160b] dark:text-[#f6eadc] line-clamp-2 leading-snug mb-1 group-hover:text-[#8a6d1c] dark:group-hover:text-[#e4d2bb] transition-colors">{book.title}</h3>
+                <p className="text-xs text-[#6b4a2d] dark:text-[#d9c6b2] line-clamp-1 mb-2">{book.author}</p>
+                <div className="flex items-center justify-between mt-auto">
+                  <div className="flex items-center gap-1"><Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" /><span className="text-xs font-bold text-[#5a3a22] dark:text-[#d9c6b2]">{Number(book.rating || 0).toFixed(1)}</span></div>
+                  <span className="text-[10px] font-bold text-[#8a6d1c] dark:text-[#d4b07a] bg-[#f3e7d3] dark:bg-[#332823] px-2 py-0.5 rounded-md">{book.category}</span>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="py-20 text-center">
-            <Search className="w-12 h-12 text-[#d4c3a3] mx-auto mb-4" />
-            <h3 className="text-xl font-bold text-[#2a160b] dark:text-[#f6eadc] mb-2 font-serif">Buku tidak ditemukan</h3>
-            <p className="text-[#5a3a22] dark:text-[#d9c6b2]">Coba ubah kata kunci pencarian atau pilih kategori lain.</p>
+          <div className="py-16 text-center text-[#6b4a2d] dark:text-[#d9c6b2] bg-[#f7f1e7] dark:bg-[#26201c] rounded-2xl border border-dashed border-[#d8c3a6] dark:border-[#4a3a31]">
+            <Search className="w-12 h-12 text-[#d4c3a3] dark:text-[#5b4636] mx-auto mb-3" />
+            <p className="font-medium">{t('siswa.catalog.notFoundTitle')}</p>
+            <p className="text-sm mt-1">{t('siswa.catalog.notFoundDesc')}</p>
           </div>
         )}
-      </section>
-
+      </div>
     </div>
   );
 };

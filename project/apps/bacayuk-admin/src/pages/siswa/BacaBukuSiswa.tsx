@@ -1,101 +1,164 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, ChevronLeft, ChevronRight, List, Moon, Sun } from 'lucide-react';
-import { Book, initialBooks } from '../../lib/mockData';
+import type { Book, HistoryItem } from '../../lib/mockData';
+import { api } from '../../lib/api';
+import { useTheme } from '../../lib/theme';
+import { useLanguage } from '../../lib/language';
+import { getStudentSession } from '../../lib/session';
 
 const BacaBukuSiswa = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isDark, toggleTheme } = useTheme();
+  const { t } = useLanguage();
   const [book, setBook] = useState<Book | null>(null);
-  
-  // Reader Settings State
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [loading, setLoading] = useState(true);
+
   const [fontSize, setFontSize] = useState(18);
   const [showMenu, setShowMenu] = useState(false);
   const [page, setPage] = useState(1);
+  const historyIdRef = useRef<string | null>(null);
+  const historyReadyRef = useRef(false);
+  const saveTimerRef = useRef<number | null>(null);
+  const studentId = getStudentSession()?.id;
+  const totalPages = 15;
 
   useEffect(() => {
-    // Load book data
-    try {
-      const savedBooks = localStorage.getItem('bacayuk_books');
-      const allBooks = savedBooks ? JSON.parse(savedBooks) : initialBooks;
-      const list = Array.isArray(allBooks) ? allBooks : initialBooks;
-      const foundBook = list.find((b: Book) => b.id === id) || null;
-      setBook(foundBook);
-    } catch {
-      setBook(initialBooks.find((b) => b.id === id) || null);
-    }
-  }, [id]);
+    if (!id) return;
+    let mounted = true;
+    historyReadyRef.current = false;
+    historyIdRef.current = null;
+    (async () => {
+      try {
+        const data = await api.get<Book>(`/api/books/${id}`);
+        if (!mounted) return;
+        setBook(data || null);
+        // load existing history for this student+book to resume
+        if (studentId) {
+          try {
+            const hist = await api.get<HistoryItem[]>(`/api/history?studentId=${encodeURIComponent(studentId)}`);
+            const list = Array.isArray(hist) ? hist : [];
+            const existing = list.find((h) => h.bookId === id);
+            if (existing) {
+              historyIdRef.current = existing.id;
+              const p = Number(existing.currentPage || 1);
+              if (p >= 1 && p <= totalPages) setPage(p);
+            }
+          } catch {}
+        }
+      } catch {
+        if (mounted) setBook(null);
+      } finally {
+        if (mounted) {
+          historyReadyRef.current = true;
+          setLoading(false);
+        }
+      }
+    })();
+    return () => { mounted = false; };
+  }, [id, studentId]);
+
+  // save progress (after history resolved to avoid duplicates)
+  useEffect(() => {
+    if (!book || !studentId || !historyReadyRef.current) return;
+    const progress = Math.round((page / totalPages) * 100);
+    const status = page >= totalPages ? 'Selesai' : 'Sedang Dibaca';
+    const payload = {
+      studentId,
+      bookId: book.id,
+      bookTitle: book.title,
+      author: book.author,
+      coverUrl: book.coverUrl,
+      progress,
+      currentPage: page,
+      totalPages,
+      lastRead: new Date().toISOString(),
+      status,
+    };
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      const save = async () => {
+        try {
+          if (historyIdRef.current) {
+            await api.put(`/api/history/${historyIdRef.current}`, payload);
+          } else {
+            const created = await api.post<HistoryItem>('/api/history', payload);
+            if (created?.id) historyIdRef.current = created.id;
+          }
+        } catch {}
+      };
+      void save();
+    }, 300);
+    return () => {
+      if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    };
+  }, [book, page, studentId]);
+
+  if (loading) {
+    return <div className="min-h-screen flex items-center justify-center bg-[#F9F7F1] dark:bg-[#171311] text-[#2a160b] dark:text-[#f3e9dc]">Memuat...</div>;
+  }
 
   if (!book) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center bg-[#F9F7F1] text-[#2a160b]">
-        <h2 className="text-2xl font-bold mb-2">Buku tidak ditemukan</h2>
-        <p className="text-sm text-[#5a3a22] mb-6">Buku yang ingin kamu baca tidak tersedia.</p>
-        <button onClick={() => navigate(-1)} className="px-5 py-2.5 rounded-xl bg-[#3a2012] text-[#f9f6f0] font-bold">Kembali</button>
+      <div className="min-h-screen flex flex-col items-center justify-center p-10 text-center bg-[#F9F7F1] dark:bg-[#171311] text-[#2a160b] dark:text-[#f3e9dc] transition-colors">
+        <h2 className="text-2xl font-bold mb-2">{t('reader.notFound')}</h2>
+        <p className="text-sm text-[#5a3a22] dark:text-[#d9c6b2] mb-6">{t('reader.unavailable')}</p>
+        <button onClick={() => navigate(-1)} className="px-5 py-2.5 rounded-xl bg-[#3a2012] dark:bg-[#8b5e34] text-[#f9f6f0] font-bold">{t('reader.back')}</button>
       </div>
     );
   }
 
-  const totalPages = 15; // Mock total pages
-
-  const toggleDarkMode = () => setIsDarkMode(!isDarkMode);
-
-  // Content styles based on settings
-  const readerBg = isDarkMode ? 'bg-[#121212]' : 'bg-[#F9F7F1]';
-  const readerText = isDarkMode ? 'text-gray-300' : 'text-gray-800';
-  const navBg = isDarkMode ? 'bg-[#1E1E1E] border-gray-800' : 'bg-[#f9f6f0] border-gray-200';
-  const iconColor = isDarkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-[#8a6d1c]';
+  const readerBg = isDark ? 'bg-[#121212]' : 'bg-[#F9F7F1]';
+  const readerText = isDark ? 'text-gray-300' : 'text-gray-800';
+  const navBg = isDark ? 'bg-[#1E1E1E]/95 border-gray-800' : 'bg-[#f9f6f0]/95 border-gray-200';
+  const iconColor = isDark ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-[#8a6d1c]';
 
   return (
     <div className={`min-h-screen transition-colors duration-300 flex flex-col font-serif ${readerBg}`}>
-      {/* Top Navbar (Reading Menu) */}
-      <div className={`fixed top-0 left-0 right-0 z-50 border-b shadow-sm transition-all duration-300 ${navBg} ${showMenu ? 'translate-y-0' : '-translate-y-full'}`}>
+      <div className={`fixed top-0 left-0 right-0 z-50 border-b shadow-sm backdrop-blur transition-all duration-300 ${navBg} ${showMenu ? 'translate-y-0' : '-translate-y-full'}`}>
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <button onClick={() => navigate(`/siswa/buku/${book.id}`)} className={`p-2 rounded-full ${iconColor}`}>
+            <button onClick={() => navigate(`/siswa/buku/${book.id}`)} className={`p-2 rounded-full ${iconColor}`} title={t('reader.backToDetail')}>
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <h1 className={`font-sans font-bold truncate max-w-[150px] sm:max-w-xs ${isDarkMode ? 'text-gray-200' : 'text-[#3a2012]'}`}>
+            <h1 className={`font-sans font-bold truncate max-w-[150px] sm:max-w-xs ${isDark ? 'text-gray-200' : 'text-[#3a2012]'}`}>
               {book.title}
             </h1>
           </div>
-          
+
           <div className="flex items-center gap-2 sm:gap-4">
-            <button onClick={toggleDarkMode} className={`p-2 rounded-full ${iconColor}`} title="Toggle Dark Mode">
-              {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+            <button onClick={toggleTheme} className={`p-2 rounded-full ${iconColor}`} title={isDark ? t('nav.themeLight') : t('nav.themeDark')} aria-label={isDark ? t('nav.themeLight') : t('nav.themeDark')}>
+              {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
             </button>
-            
-            <div className="flex items-center bg-gray-100 dark:bg-gray-800 rounded-lg p-1 hidden sm:flex">
-              <button 
+
+            <div className={`items-center rounded-lg p-1 hidden sm:flex ${isDark ? 'bg-gray-800' : 'bg-gray-100'}`}>
+              <button
                 onClick={() => setFontSize(Math.max(14, fontSize - 2))}
-                className="w-8 h-8 flex items-center justify-center font-sans font-bold text-gray-500 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+                className={`w-8 h-8 flex items-center justify-center font-sans font-bold rounded-md transition-colors ${isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-500 hover:bg-white'}`}
+                title="A-"
               >
                 A-
               </button>
-              <button 
+              <button
                 onClick={() => setFontSize(Math.min(30, fontSize + 2))}
-                className="w-8 h-8 flex items-center justify-center font-sans font-bold text-gray-500 hover:bg-white dark:hover:bg-gray-700 rounded-md transition-colors"
+                className={`w-8 h-8 flex items-center justify-center font-sans font-bold rounded-md transition-colors ${isDark ? 'text-gray-300 hover:bg-gray-700' : 'text-gray-500 hover:bg-white'}`}
+                title="A+"
               >
                 A+
               </button>
             </div>
-            
-            <button className={`p-2 rounded-full ${iconColor}`}>
+
+            <button className={`p-2 rounded-full ${iconColor}`} title="TOC">
               <List className="w-5 h-5" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Invisible overlay to toggle menu when clicking top of screen */}
-      <div 
-        className="fixed top-0 left-0 right-0 h-24 z-40" 
-        onClick={() => setShowMenu(!showMenu)} 
-      />
+      <div className="fixed top-0 left-0 right-0 h-24 z-40" onClick={() => setShowMenu(!showMenu)} />
 
-      {/* Main Reading Content */}
-      <main 
+      <main
         className={`flex-1 max-w-3xl mx-auto w-full px-6 py-12 md:py-20 transition-all duration-300 ${readerText} leading-relaxed`}
         style={{ fontSize: `${fontSize}px` }}
         onClick={() => showMenu && setShowMenu(false)}
@@ -104,9 +167,9 @@ const BacaBukuSiswa = () => {
           <h2 className="text-3xl md:text-5xl font-bold mb-4 font-sans">{book.title}</h2>
           <p className="text-lg opacity-70 italic">
             Bab {page}: {
-              ["Awal dari Segalanya", "Pertemuan Tak Terduga", "Bayangan Masa Lalu", "Perjalanan Dimulai", "Sebuah Rahasia", 
-               "Kawan atau Lawan?", "Menembus Badai", "Titik Terang", "Pengkhianatan", "Jalan Buntu", 
-               "Secercah Harapan", "Pengorbanan", "Pertempuran Akhir", "Matahari Terbit", "Akhir Perjalanan"][page - 1] || "Misteri Berlanjut"
+              ['Awal dari Segalanya', 'Pertemuan Tak Terduga', 'Bayangan Masa Lalu', 'Perjalanan Dimulai', 'Sebuah Rahasia',
+                'Kawan atau Lawan?', 'Menembus Badai', 'Titik Terang', 'Pengkhianatan', 'Jalan Buntu',
+                'Secercah Harapan', 'Pengorbanan', 'Pertempuran Akhir', 'Matahari Terbit', 'Akhir Perjalanan'][page - 1] || 'Misteri Berlanjut'
             }
           </p>
         </div>
@@ -124,38 +187,36 @@ const BacaBukuSiswa = () => {
           <p>
             Di tengah perjalanan mereka, langit perlahan berubah warna. Dari ungu kelam, beralih ke jingga kemerahan, hingga akhirnya biru cerah mendominasi cakrawala. Burung-burung mulai bersahutan, seolah menyanyikan melodi tentang rahasia yang terungkap di bagian {page} cerita ini.
           </p>
-          <p className="italic opacity-80 mt-10 p-4 border-l-4 border-[#8a6d1c] bg-[#8a6d1c]/10 rounded-r-lg">
-            (Kamu sedang berada di Halaman {page}. Teks sengaja dibuat dinamis agar kamu bisa melihat efek pergantian halamannya bekerja dengan baik. Teruskan membaca ke halaman {Math.min(page + 1, 15)} untuk melihat perubahan selanjutnya!)
+          <p className={`italic opacity-80 mt-10 p-4 border-l-4 border-[#8a6d1c] rounded-r-lg ${isDark ? 'bg-[#8a6d1c]/20' : 'bg-[#8a6d1c]/10'}`}>
+            (Kamu sedang berada di Halaman {page}. Teks sengaja dibuat dinamis agar kamu bisa melihat efek pergantian halamannya bekerja dengan baik. Teruskan membaca ke halaman {Math.min(page + 1, totalPages)} untuk melihat perubahan selanjutnya!)
           </p>
         </div>
       </main>
 
-      {/* Bottom Navigation */}
-      <div className={`sticky bottom-0 left-0 right-0 z-40 border-t ${navBg} px-4 py-3 flex items-center justify-between font-sans`}>
-        <button 
+      <div className={`sticky bottom-0 left-0 right-0 z-40 border-t backdrop-blur ${navBg} px-4 py-3 flex items-center justify-between font-sans`}>
+        <button
           onClick={() => setPage(Math.max(1, page - 1))}
           disabled={page === 1}
-          className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${page === 1 ? 'opacity-50 cursor-not-allowed text-gray-400' : isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'}`}
+          className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${page === 1 ? 'opacity-50 cursor-not-allowed text-gray-400' : isDark ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'}`}
         >
-          <ChevronLeft className="w-5 h-5" /> Sebelumnya
+          <ChevronLeft className="w-5 h-5" /> {t('reader.prev')}
         </button>
-        
-        <div className={`text-sm font-medium ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-          Halaman {page} dari {totalPages}
+
+        <div className={`text-sm font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+          {t('reader.page')} {page} {t('reader.of')} {totalPages}
         </div>
-        
-        <button 
+
+        <button
           onClick={() => setPage(Math.min(totalPages, page + 1))}
           disabled={page === totalPages}
-          className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${page === totalPages ? 'opacity-50 cursor-not-allowed text-gray-400' : isDarkMode ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'}`}
+          className={`flex items-center gap-1 px-4 py-2 rounded-xl text-sm font-bold transition-colors ${page === totalPages ? 'opacity-50 cursor-not-allowed text-gray-400' : isDark ? 'text-gray-300 hover:bg-gray-800' : 'text-gray-700 hover:bg-gray-100'}`}
         >
-          Selanjutnya <ChevronRight className="w-5 h-5" />
+          {page === totalPages ? t('reader.finish') : t('reader.next')} <ChevronRight className="w-5 h-5" />
         </button>
       </div>
 
-      {/* Helper text for desktop */}
-      <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 text-xs opacity-50 px-3 py-1 rounded-full ${isDarkMode ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'} transition-opacity duration-1000 ${showMenu ? 'opacity-0' : 'opacity-50'}`}>
-        Klik bagian atas layar untuk memunculkan menu
+      <div className={`fixed bottom-20 left-1/2 -translate-x-1/2 text-xs px-3 py-1 rounded-full transition-opacity duration-1000 ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'} ${showMenu ? 'opacity-0' : 'opacity-50'}`}>
+        {t('reader.menuHint')}
       </div>
     </div>
   );

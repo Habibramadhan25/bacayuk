@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { BookOpen, User, Lock, Mail, Loader2 } from 'lucide-react';
+import { api } from '../lib/api';
 
 const Register = () => {
   const [name, setName] = useState('');
@@ -12,10 +13,10 @@ const Register = () => {
   const [success, setSuccess] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    
+
     if (!name || !username || !password || !confirmPassword) {
       setError('Semua form harus diisi');
       return;
@@ -26,20 +27,23 @@ const Register = () => {
       return;
     }
 
-    setLoading(true);
+    if (password.length < 4) {
+      setError('Kata sandi minimal 4 karakter');
+      return;
+    }
 
-    // Simulate API call
-    setTimeout(() => {
-      // Simpan data pendaftaran ke localStorage
-      localStorage.setItem('registered_siswa_name', name);
-      localStorage.setItem('registered_siswa_nis', username);
-      
+    setLoading(true);
+    try {
+      await api.post('/api/auth/student/register', { username, name, password });
       setSuccess(true);
       setTimeout(() => {
-        // Redirect to login after successful registration
         navigate('/siswa/login');
-      }, 2000); // Wait for animation
-    }, 800);
+      }, 1500);
+    } catch (err: any) {
+      setError(err?.message || 'Gagal mendaftar. Coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,7 +84,7 @@ const Register = () => {
           <p className="text-lg text-[#d4c3a3] leading-relaxed">
             Bergabunglah dengan BacaYuk dan mulai petualangan membaca serta mengelola perpustakaan digital Anda.
           </p>
-          
+
           <div className="mt-12 p-6 bg-white/5 rounded-2xl border border-white/10 backdrop-blur-md text-left">
             <p className="text-[#d4c3a3] italic mb-4">"Buku adalah pesawat, kereta api, dan jalan. Mereka adalah tujuan, dan perjalanan. Mereka adalah rumah."</p>
             <p className="text-[#f9f6f0] font-medium text-sm">— Anna Quindlen</p>
@@ -104,8 +108,6 @@ const Register = () => {
               Silakan lengkapi data berikut untuk mendaftar.
             </p>
           </div>
-
-
 
           {error && (
             <div className="bg-red-50 text-red-600 p-4 rounded-xl text-sm mb-6 border border-red-100 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
@@ -171,7 +173,7 @@ const Register = () => {
                 />
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-bold text-[#2a160b] mb-2">Konfirmasi Password</label>
               <div className="relative group">
@@ -206,7 +208,7 @@ const Register = () => {
               )}
             </button>
           </form>
-          
+
           <div className="mt-8 text-center text-sm">
             <span className="text-[#5a3a22]">Sudah punya akun? </span>
             <Link to="/siswa/login" className="font-bold text-[#8a6d1c] hover:text-primary/80 transition-colors">

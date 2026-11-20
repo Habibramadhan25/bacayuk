@@ -25,6 +25,6 @@ Repo ini sekarang dikonfigurasi agar **1 project Vercel** melayani aplikasi gabu
 - Siswa: `/siswa/login`, `/siswa`, `/siswa/katalog`, dll.
 
 ## Catatan
-- Pastikan **tidak** membuat project Vercel terpisah untuk `admin--main` jika tujuanmu hanya 1 link, agar tidak muncul deployment/link kedua.
+- Pastikan hanya ada **satu project Vercel** untuk web app ini agar tidak muncul deployment/link kedua.
 - Jika butuh backend/API, set environment variable dan sesuaikan endpoint sesuai layanan yang kamu deploy terpisah.
-- `admin--main/` dan `project/apps/server|backend|mobile` adalah bagian lain dari repo; untuk kebutuhan "1 web link admin+siswa", fokus deploy ke `project/apps/bacayuk-admin`.
+- `project/apps/server|backend|mobile` adalah bagian lain dari repo (backend/mobile dikerjakan terpisah); untuk kebutuhan "1 web link admin+siswa", fokus deploy ke `project/apps/bacayuk-admin`.

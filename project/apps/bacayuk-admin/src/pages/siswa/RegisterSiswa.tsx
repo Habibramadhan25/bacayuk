@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { BookOpen, User, Lock, Eye, EyeOff, Loader2, Sparkles, Medal, Book, Bookmark } from 'lucide-react';
+import { BookOpen, User, Lock, Eye, EyeOff, Loader2, Sparkles, Book } from 'lucide-react';
+import { api } from '../../lib/api';
+import { setStudentSession } from '../../lib/session';
 
 const RegisterSiswa = () => {
   const [nis, setNis] = useState('');
@@ -11,7 +13,7 @@ const RegisterSiswa = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleRegister = (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -26,34 +28,32 @@ const RegisterSiswa = () => {
     }
 
     setLoading(true);
-
-    setTimeout(() => {
-      // Simpan data ke localStorage untuk mensimulasikan registrasi berhasil
-      localStorage.setItem('registered_siswa_nis', nis);
-      localStorage.setItem('registered_siswa_name', name);
-      localStorage.setItem('registered_siswa_password', password);
-      
-      // Langsung login
-      localStorage.setItem('bacayuk_siswa_auth', 'true');
-      localStorage.setItem('bacayuk_siswa_name', name);
-      window.dispatchEvent(new Event('auth_changed'));
+    try {
+      const student = await api.post<any>('/api/auth/student/register', {
+        username: nis,
+        name,
+        password,
+      });
+      setStudentSession({ ...student, type: 'student' });
       navigate('/siswa');
-    }, 1200);
+    } catch (err: any) {
+      setError(err?.message || 'Gagal mendaftar. Coba lagi.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-cover bg-center flex items-center justify-center p-4 sm:p-8"
       style={{ backgroundImage: 'url("https://images.unsplash.com/photo-1601058268499-e52658b8ebf8?auto=format&fit=crop&q=80&w=2000")' }}
     >
       <div className="max-w-6xl w-full grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 items-center">
-        
-        {/* Left Section - The Book Page */}
+
         <div className="hidden lg:block relative group perspective-1000">
           <div className="absolute inset-0 bg-black/10 rounded-tr-3xl rounded-br-3xl transform translate-x-2 translate-y-4 blur-md"></div>
           <div className="relative bg-[#f9f6f0] p-12 rounded-tr-3xl rounded-br-3xl shadow-2xl border-l-4 border-[#d4c3a3] text-[#3a2012]">
-            
-            {/* Logo */}
+
             <div className="flex items-center gap-3 mb-8">
               <div className="w-12 h-12 bg-gradient-to-br from-[#d4af37] to-[#8a6d1c] rounded-xl flex items-center justify-center shadow-lg">
                 <BookOpen className="w-7 h-7 text-[#f9f6f0]" />
@@ -86,14 +86,11 @@ const RegisterSiswa = () => {
           </div>
         </div>
 
-        {/* Right Section - Register Form (Paper Stack) */}
         <div className="relative max-w-md w-full mx-auto">
-          {/* Stack effect papers */}
           <div className="absolute inset-0 bg-[#f0e6d2] rounded-2xl transform rotate-3 shadow-lg"></div>
           <div className="absolute inset-0 bg-[#e6ddc5] rounded-2xl transform -rotate-2 shadow-lg"></div>
-          
+
           <div className="relative bg-[#f9f6f0] p-8 sm:p-10 rounded-2xl shadow-xl border border-[#ebdcb8]">
-            {/* Tabs */}
             <div className="flex p-1 bg-[#ebdcb8] rounded-xl mb-8">
               <Link to="/siswa/login" className="flex-1 py-2.5 text-[#8a6d1c] font-bold rounded-lg hover:bg-white/50 transition-colors flex items-center justify-center gap-2">
                 Masuk

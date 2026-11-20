@@ -1,13 +1,18 @@
 ﻿import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, Search, Filter, Edit, Trash2, Eye, Star, BookOpen, X } from 'lucide-react';
-import { Book } from '../lib/mockData';
+import type { Book } from '../lib/mockData';
 import { handleBookCoverError, resolveBookCover } from '../lib/bookCover';
+import { addNotification } from '../lib/notifications';
+import { useLanguage } from '../lib/language';
+import { api } from '../lib/api';
 
 const Books = () => {
   const [books, setBooks] = useState<Book[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
 
   const [deleteId, setDeleteId] = useState('');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
@@ -19,28 +24,47 @@ const Books = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  useEffect(() => {
+  const loadBooks = async () => {
     try {
-      const saved = localStorage.getItem('bacayuk_books');
-      setBooks(saved ? JSON.parse(saved) : []);
+      const data = await api.get<Book[]>('/api/books');
+      setBooks(Array.isArray(data) ? data : []);
     } catch {
       setBooks([]);
+    } finally {
+      setLoading(false);
     }
-  }, []);
-
-  const executeDelete = () => {
-    if (!deleteId) return;
-    const updatedBooks = books.filter(b => b.id !== deleteId);
-    setBooks(updatedBooks);
-    localStorage.setItem('bacayuk_books', JSON.stringify(updatedBooks));
-    setDeleteId('');
-    const maxPageAfterDelete = Math.max(1, Math.ceil(updatedBooks.length / itemsPerPage));
-    if (currentPage > maxPageAfterDelete) setCurrentPage(maxPageAfterDelete);
   };
 
-  const filteredBooks = books.filter(b =>
-    (b.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (b.author || '').toLowerCase().includes(searchTerm.toLowerCase())
+  useEffect(() => { void loadBooks(); }, []);
+
+  const executeDelete = async () => {
+    if (!deleteId) return;
+    const target = books.find(b => b.id === deleteId);
+    try {
+      await api.delete(`/api/books/${deleteId}`);
+      const updatedBooks = books.filter(b => b.id !== deleteId);
+      setBooks(updatedBooks);
+      if (target) {
+        void addNotification({
+          title: t('admin.books.notifDeletedTitle'),
+          message: `"${target.title}" ${t('admin.books.notifDeletedMsg')}`,
+          type: 'book',
+          audience: 'admin',
+        });
+      }
+      const maxPageAfterDelete = Math.max(1, Math.ceil(updatedBooks.length / itemsPerPage));
+      setCurrentPage(prev => Math.min(prev, maxPageAfterDelete));
+    } catch {
+      // ignore
+    } finally {
+      setDeleteId('');
+    }
+  };
+
+  const filteredBooks = books.filter(book =>
+    (book.title || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (book.author || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (book.category || '').toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const totalPages = Math.max(1, Math.ceil(filteredBooks.length / itemsPerPage));
@@ -49,15 +73,18 @@ const Books = () => {
 
   useEffect(() => { setCurrentPage(1); }, [searchTerm]);
 
+  const statusLabel = (status: string) => status === 'Published' ? t('admin.status.published') : t('admin.status.draft');
+  const locale = lang === 'en' ? 'en-US' : 'id-ID';
+
   return (
     <div className="space-y-6 relative">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-black font-serif text-[#183126] dark:text-[#edf7f1]">Kelola Koleksi Buku</h1>
-          <p className="text-[#567564] dark:text-[#9ec0ad]">Panel petugas untuk manajemen katalog dan koleksi perpustakaan</p>
+          <h1 className="text-2xl font-black font-serif text-[#183126] dark:text-[#edf7f1]">{t('admin.page.books.title')}</h1>
+          <p className="text-[#567564] dark:text-[#9ec0ad]">{t('admin.page.books.desc')}</p>
         </div>
         <button onClick={() => navigate('/books/add')} className="flex items-center gap-2 bg-[#163126] text-[#f4fbf7] px-4 py-2.5 rounded-xl font-semibold hover:bg-[#204437] transition-colors shadow-sm border border-[#244738]">
-          <Plus className="w-5 h-5" /> Tambah Buku
+          <Plus className="w-5 h-5" /> {t('admin.books.addNew')}
         </button>
       </div>
 
@@ -65,11 +92,11 @@ const Books = () => {
         <div className="p-4 border-b border-[#d7e3da] dark:border-[#2a3d34] flex flex-col md:flex-row gap-4 justify-between bg-[#edf4ef] dark:bg-[#1b2923]">
           <div className="relative w-full md:w-96">
             <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-[#6f8a7b] dark:text-[#8eab9b]" />
-            <input type="text" placeholder="Cari judul buku atau penulis..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-[#d7e3da] dark:border-[#2a3d34] rounded-xl text-sm bg-white dark:bg-[#182621] text-[#183126] dark:text-[#e7f0ea] focus:border-[#d4a94e] focus:ring-2 focus:ring-[#d4a94e]/20 outline-none transition-all" />
+            <input type="text" placeholder={t('admin.books.searchPlaceholder')} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="w-full pl-10 pr-4 py-2.5 border border-[#d7e3da] dark:border-[#2a3d34] rounded-xl text-sm bg-white dark:bg-[#182621] text-[#183126] dark:text-[#e7f0ea] focus:border-[#d4a94e] focus:ring-2 focus:ring-[#d4a94e]/20 outline-none transition-all" />
           </div>
           <div className="flex gap-2">
             <button className="flex items-center gap-2 px-4 py-2 border border-[#d7e3da] dark:border-[#2a3d34] rounded-xl text-sm font-medium text-[#355243] dark:text-[#dcebe2] bg-white dark:bg-[#182621] hover:bg-[#edf4ef] dark:hover:bg-[#22352d] transition-colors">
-              <Filter className="w-4 h-4" /> Filter
+              <Filter className="w-4 h-4" /> {t('admin.common.filter')}
             </button>
           </div>
         </div>
@@ -78,16 +105,18 @@ const Books = () => {
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-[#edf4ef] dark:bg-[#1b2923] text-[#567564] dark:text-[#9ec0ad] text-sm border-b border-[#d7e3da] dark:border-[#2a3d34]">
-                <th className="p-4 font-medium">Buku</th>
-                <th className="p-4 font-medium">Kategori</th>
-                <th className="p-4 font-medium">Status</th>
-                <th className="p-4 font-medium">Rating</th>
-                <th className="p-4 font-medium">Pembaca</th>
-                <th className="p-4 font-medium text-center">Aksi</th>
+                <th className="p-4 font-medium">{t('admin.books.col.book')}</th>
+                <th className="p-4 font-medium">{t('admin.books.col.category')}</th>
+                <th className="p-4 font-medium">{t('admin.books.col.status')}</th>
+                <th className="p-4 font-medium">{t('admin.books.col.rating')}</th>
+                <th className="p-4 font-medium">{t('admin.books.col.readers')}</th>
+                <th className="p-4 font-medium text-center">{t('admin.books.col.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#d7e3da] dark:divide-[#2a3d34] text-sm">
-              {currentBooks.map((book) => (
+              {loading ? (
+                <tr><td colSpan={6} className="p-12 text-center text-[#567564] dark:text-[#9ec0ad]">Memuat...</td></tr>
+              ) : currentBooks.map((book) => (
                 <tr key={book.id} className="hover:bg-[#edf4ef]/70 dark:hover:bg-[#1b2923]/70 transition-colors group">
                   <td className="p-4">
                     <div className="flex items-center gap-4">
@@ -102,36 +131,36 @@ const Books = () => {
                     <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-[#e7f1ea] dark:bg-[#22352d] text-[#355243] dark:text-[#cfead9] border border-[#cfe0d4] dark:border-[#355244]">{book.category}</span>
                   </td>
                   <td className="p-4">
-                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${book.status === 'Published' ? 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100/70 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'}`}>{book.status}</span>
+                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${book.status === 'Published' ? 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100/70 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'}`}>{statusLabel(book.status)}</span>
                   </td>
                   <td className="p-4">
-                    <div className="flex items-center gap-1 font-bold text-[#183126] dark:text-[#edf7f1]"><Star className="w-4 h-4 text-amber-400 fill-amber-400" />{book.rating || 0}</div>
+                    <div className="flex items-center gap-1 font-bold text-[#183126] dark:text-[#edf7f1]"><Star className="w-4 h-4 text-amber-400 fill-amber-400" />{Number(book.rating || 0).toFixed(1)}</div>
                   </td>
-                  <td className="p-4 text-[#355243] dark:text-[#dcebe2] font-medium">{(book.readers || 0).toLocaleString()}</td>
+                  <td className="p-4 text-[#355243] dark:text-[#dcebe2] font-medium">{(book.readers || 0).toLocaleString(locale)}</td>
                   <td className="p-4">
                     <div className="flex items-center justify-center gap-2">
-                      <button title="Lihat Detail" onClick={() => setSelectedBook(book)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-[#2f5b43] hover:bg-[#e7f1ea] dark:hover:bg-[#22352d] rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
-                      <button title="Edit Buku" onClick={() => navigate(`/books/edit/${book.id}`)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
-                      <button title="Hapus Buku" onClick={() => setDeleteId(book.id)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
+                      <button title={t('admin.common.view')} onClick={() => setSelectedBook(book)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-[#2f5b43] hover:bg-[#e7f1ea] dark:hover:bg-[#22352d] rounded-lg transition-colors"><Eye className="w-4 h-4" /></button>
+                      <button title={t('admin.common.edit')} onClick={() => navigate(`/books/edit/${book.id}`)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"><Edit className="w-4 h-4" /></button>
+                      <button title={t('admin.common.delete')} onClick={() => setDeleteId(book.id)} className="p-1.5 text-[#567564] dark:text-[#9ec0ad] hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </td>
                 </tr>
               ))}
-              {currentBooks.length === 0 && (
-                <tr><td colSpan={6} className="p-12 text-center text-[#567564] dark:text-[#9ec0ad]">Tidak ada buku yang ditemukan.</td></tr>
+              {!loading && currentBooks.length === 0 && (
+                <tr><td colSpan={6} className="p-12 text-center text-[#567564] dark:text-[#9ec0ad]">{t('admin.books.empty')}</td></tr>
               )}
             </tbody>
           </table>
         </div>
 
         <div className="p-4 border-t border-[#d7e3da] dark:border-[#2a3d34] flex items-center justify-between text-sm text-[#355243] dark:text-[#dcebe2] bg-[#edf4ef] dark:bg-[#1b2923]">
-          <div>Menampilkan {filteredBooks.length === 0 ? 0 : startIndex + 1} hingga {Math.min(startIndex + itemsPerPage, filteredBooks.length)} dari {filteredBooks.length} buku</div>
+          <div>{t('admin.common.showing')} {filteredBooks.length === 0 ? 0 : startIndex + 1} {t('admin.common.to')} {Math.min(startIndex + itemsPerPage, filteredBooks.length)} {t('admin.common.of')} {filteredBooks.length} {t('admin.common.booksUnit')}</div>
           <div className="flex gap-1">
-            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border border-[#d7e3da] dark:border-[#2a3d34] rounded-md hover:bg-[#dfeee5] dark:hover:bg-[#22352d] disabled:opacity-50 font-medium">Sebelumnya</button>
+            <button onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))} disabled={currentPage === 1} className="px-3 py-1 border border-[#d7e3da] dark:border-[#2a3d34] rounded-md hover:bg-[#dfeee5] dark:hover:bg-[#22352d] disabled:opacity-50 font-medium">{t('admin.common.previous')}</button>
             {Array.from({ length: totalPages }, (_, i) => i + 1).slice(0, 7).map(page => (
               <button key={page} onClick={() => setCurrentPage(page)} className={`px-3 py-1 border rounded-md font-medium ${currentPage === page ? 'bg-[#163126] border-[#163126] text-[#f4fbf7]' : 'border-[#d7e3da] dark:border-[#2a3d34] hover:bg-[#dfeee5] dark:hover:bg-[#22352d]'}`}>{page}</button>
             ))}
-            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border border-[#d7e3da] dark:border-[#2a3d34] rounded-md hover:bg-[#dfeee5] dark:hover:bg-[#22352d] disabled:opacity-50 font-medium">Selanjutnya</button>
+            <button onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))} disabled={currentPage === totalPages} className="px-3 py-1 border border-[#d7e3da] dark:border-[#2a3d34] rounded-md hover:bg-[#dfeee5] dark:hover:bg-[#22352d] disabled:opacity-50 font-medium">{t('admin.common.next')}</button>
           </div>
         </div>
       </div>
@@ -141,12 +170,12 @@ const Books = () => {
           <div className="bg-[#f8fbf8] dark:bg-[#15211c] rounded-2xl shadow-xl w-full max-w-sm overflow-hidden text-center border border-[#d7e3da] dark:border-[#2a3d34]">
             <div className="p-6">
               <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4 text-red-500"><Trash2 className="w-8 h-8" /></div>
-              <h3 className="text-xl font-bold text-[#183126] dark:text-[#edf7f1] mb-2">Hapus Buku?</h3>
-              <p className="text-[#567564] dark:text-[#9ec0ad] text-sm">Tindakan ini tidak dapat dibatalkan.</p>
+              <h3 className="text-xl font-bold text-[#183126] dark:text-[#edf7f1] mb-2">{t('admin.books.deleteTitle')}</h3>
+              <p className="text-[#567564] dark:text-[#9ec0ad] text-sm">{t('admin.books.deleteDesc')}</p>
             </div>
             <div className="p-4 border-t border-[#d7e3da] dark:border-[#2a3d34] flex justify-center gap-3 bg-[#edf4ef] dark:bg-[#1b2923]">
-              <button onClick={() => setDeleteId('')} className="flex-1 py-2.5 text-[#355243] dark:text-[#dcebe2] font-medium hover:bg-[#dfeee5] dark:hover:bg-[#22352d] rounded-xl">Batal</button>
-              <button onClick={executeDelete} className="flex-1 py-2.5 bg-red-500 text-white font-medium hover:bg-red-600 rounded-xl">Ya, Hapus</button>
+              <button onClick={() => setDeleteId('')} className="flex-1 py-2.5 text-[#355243] dark:text-[#dcebe2] font-medium hover:bg-[#dfeee5] dark:hover:bg-[#22352d] rounded-xl">{t('admin.common.cancel')}</button>
+              <button onClick={() => void executeDelete()} className="flex-1 py-2.5 bg-red-500 text-white font-medium hover:bg-red-600 rounded-xl">{t('admin.common.yesDelete')}</button>
             </div>
           </div>
         </div>
@@ -156,7 +185,7 @@ const Books = () => {
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
           <div className="bg-[#f8fbf8] dark:bg-[#15211c] rounded-2xl shadow-xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh] border border-[#d7e3da] dark:border-[#2a3d34]">
             <div className="p-5 border-b border-[#d7e3da] dark:border-[#2a3d34] flex items-center justify-between bg-[#edf4ef] dark:bg-[#1b2923]">
-              <h3 className="text-lg font-bold text-[#183126] dark:text-[#edf7f1] flex items-center gap-2"><Eye className="w-5 h-5 text-[#567564] dark:text-[#9ec0ad]" />Detail Buku</h3>
+              <h3 className="text-lg font-bold text-[#183126] dark:text-[#edf7f1] flex items-center gap-2"><Eye className="w-5 h-5 text-[#567564] dark:text-[#9ec0ad]" />{t('admin.books.detailTitle')}</h3>
               <button onClick={() => setSelectedBook(null)} className="p-2 text-[#567564] dark:text-[#9ec0ad] hover:bg-[#dfeee5] dark:hover:bg-[#22352d] rounded-full"><X className="w-5 h-5" /></button>
             </div>
             <div className="p-6 overflow-y-auto">
@@ -167,22 +196,22 @@ const Books = () => {
                   <h4 className="text-2xl font-bold text-[#183126] dark:text-[#edf7f1] leading-tight mb-2">{selectedBook.title}</h4>
                   <p className="text-lg text-[#355243] dark:text-[#dcebe2] mb-4">{selectedBook.author} • {selectedBook.year}</p>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">Status</p><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${selectedBook.status === 'Published' ? 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100/70 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'}`}>{selectedBook.status}</span></div>
-                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">Rating</p><div className="flex items-center gap-1 font-bold text-[#183126] dark:text-[#edf7f1] text-sm"><Star className="w-4 h-4 text-amber-400 fill-amber-400" />{selectedBook.rating || 0}</div></div>
-                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">Pembaca</p><p className="font-bold text-[#183126] dark:text-[#edf7f1] text-sm">{(selectedBook.readers || 0).toLocaleString()} orang</p></div>
+                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">{t('admin.common.status')}</p><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border ${selectedBook.status === 'Published' ? 'bg-emerald-100/70 text-emerald-800 border-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-800' : 'bg-amber-100/70 text-amber-800 border-amber-300 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-800'}`}>{statusLabel(selectedBook.status)}</span></div>
+                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">{t('admin.books.col.rating')}</p><div className="flex items-center gap-1 font-bold text-[#183126] dark:text-[#edf7f1] text-sm"><Star className="w-4 h-4 text-amber-400 fill-amber-400" />{Number(selectedBook.rating || 0).toFixed(1)}</div></div>
+                    <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">{t('admin.books.col.readers')}</p><p className="font-bold text-[#183126] dark:text-[#edf7f1] text-sm">{(selectedBook.readers || 0).toLocaleString(locale)} {t('admin.common.peopleUnit')}</p></div>
                     <div className="bg-[#edf4ef] dark:bg-[#1b2923] p-3 rounded-xl border border-[#d7e3da] dark:border-[#2a3d34]"><p className="text-xs text-[#567564] dark:text-[#9ec0ad] mb-1 font-medium">ISBN</p><p className="font-bold text-[#183126] dark:text-[#edf7f1] text-sm truncate">{selectedBook.isbn || '-'}</p></div>
                   </div>
                 </div>
               </div>
               <div className="border-t border-[#d7e3da] dark:border-[#2a3d34] pt-6">
-                <h5 className="font-bold text-[#183126] dark:text-[#edf7f1] mb-3">Sinopsis / Deskripsi</h5>
-                <p className="text-[#355243] dark:text-[#dcebe2] text-sm leading-relaxed">{selectedBook.description || `Buku "${selectedBook.title}" karya ${selectedBook.author} (${selectedBook.year}) dalam kategori ${selectedBook.category}.`}</p>
+                <h5 className="font-bold text-[#183126] dark:text-[#edf7f1] mb-3">{t('admin.books.synopsis')}</h5>
+                <p className="text-[#355243] dark:text-[#dcebe2] text-sm leading-relaxed">{selectedBook.description || `${selectedBook.title} — ${selectedBook.author} (${selectedBook.year}).`}</p>
               </div>
             </div>
             <div className="p-4 border-t border-[#d7e3da] dark:border-[#2a3d34] bg-[#edf4ef] dark:bg-[#1b2923] flex justify-end gap-3">
-              <button onClick={() => { setReadingBook(selectedBook); setCurrentChapter(1); setSelectedBook(null); }} className="px-5 py-2.5 bg-emerald-600 text-white font-medium hover:bg-emerald-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"><BookOpen className="w-4 h-4" /> Baca Buku</button>
-              <button onClick={() => navigate(`/books/edit/${selectedBook.id}`)} className="px-5 py-2.5 bg-[#e7f1ea] dark:bg-[#22352d] text-[#355243] dark:text-[#cfead9] font-medium hover:bg-[#dfeee5] dark:hover:bg-[#2a3d34] rounded-xl transition-colors">Edit Buku</button>
-              <button onClick={() => setSelectedBook(null)} className="px-5 py-2.5 bg-[#163126] text-[#f4fbf7] font-medium hover:bg-[#204437] rounded-xl transition-colors">Tutup</button>
+              <button onClick={() => { setReadingBook(selectedBook); setCurrentChapter(1); setSelectedBook(null); }} className="px-5 py-2.5 bg-emerald-600 text-white font-medium hover:bg-emerald-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"><BookOpen className="w-4 h-4" /> {t('admin.books.read')}</button>
+              <button onClick={() => navigate(`/books/edit/${selectedBook.id}`)} className="px-5 py-2.5 bg-[#e7f1ea] dark:bg-[#22352d] text-[#355243] dark:text-[#cfead9] font-medium hover:bg-[#dfeee5] dark:hover:bg-[#2a3d34] rounded-xl transition-colors">{t('admin.books.editBook')}</button>
+              <button onClick={() => setSelectedBook(null)} className="px-5 py-2.5 bg-[#163126] text-[#f4fbf7] font-medium hover:bg-[#204437] rounded-xl transition-colors">{t('admin.common.close')}</button>
             </div>
           </div>
         </div>
@@ -199,30 +228,30 @@ const Books = () => {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <div className="hidden md:flex items-center gap-2 text-sm text-[#567564] dark:text-[#9ec0ad] mr-4"><span>Bab {currentChapter} dari {totalChapters}</span><div className="w-32 h-2 bg-[#dfeee5] dark:bg-[#22352d] rounded-full overflow-hidden"><div className="h-full bg-[#2f7a55] rounded-full transition-all duration-500" style={{ width: `${(currentChapter / totalChapters) * 100}%` }}></div></div></div>
-              <button onClick={() => setReadingBook(null)} className="px-4 py-2 bg-[#163126] text-[#f4fbf7] text-sm font-medium rounded-lg hover:bg-[#204437] transition-colors">Selesai</button>
+              <div className="hidden md:flex items-center gap-2 text-sm text-[#567564] dark:text-[#9ec0ad] mr-4"><span>{t('admin.books.chapter')} {currentChapter} {t('admin.books.ofChapters')} {totalChapters}</span><div className="w-32 h-2 bg-[#dfeee5] dark:bg-[#22352d] rounded-full overflow-hidden"><div className="h-full bg-[#2f7a55] rounded-full transition-all duration-500" style={{ width: `${(currentChapter / totalChapters) * 100}%` }}></div></div></div>
+              <button onClick={() => setReadingBook(null)} className="px-4 py-2 bg-[#163126] text-[#f4fbf7] text-sm font-medium rounded-lg hover:bg-[#204437] transition-colors">{t('admin.books.finishReading')}</button>
             </div>
           </div>
           <div className="flex-1 bg-[#fdfcf8] dark:bg-[#111a16] overflow-y-auto px-4 py-12 md:py-16">
             <div key={currentChapter} className={`max-w-2xl mx-auto ${isTransitioning ? 'opacity-0 translate-x-8' : 'animate-in fade-in slide-in-from-right-8 duration-500'}`}>
               <div className="space-y-8 text-[#183126] dark:text-[#e7f0ea] text-lg leading-relaxed font-serif">
-                <h1 className="text-4xl font-bold text-center mb-12 text-[#183126] dark:text-[#edf7f1] font-sans">{currentChapter === 1 ? 'Bab 1: Awal Mula' : `Bab ${currentChapter}: Perjalanan Berlanjut`}</h1>
+                <h1 className="text-4xl font-bold text-center mb-12 text-[#183126] dark:text-[#edf7f1] font-sans">{currentChapter === 1 ? (lang === 'en' ? 'Chapter 1: The Beginning' : 'Bab 1: Awal Mula') : `${t('admin.books.chapter')} ${currentChapter}`}</h1>
                 {currentChapter === 1 ? (
                   <>
-                    <p>Ini adalah pratinjau baca dari buku <strong>{readingBook.title}</strong> karya <em>{readingBook.author}</em>. Mode baca ini disediakan sebagai simulasi pengalaman membaca di panel admin.</p>
-                    <p>Setiap halaman membawa pembaca masuk ke dalam suasana cerita, memperkenalkan tokoh, konflik, dan harapan yang perlahan berkembang seiring alur berjalan.</p>
+                    <p>{t('admin.books.preview1')} <strong>{readingBook.title}</strong> — <em>{readingBook.author}</em>. {t('admin.books.preview2')}</p>
+                    <p>{t('admin.books.preview3')}</p>
                   </>
                 ) : (
                   <>
-                    <p>Perjalanan di bab {currentChapter} berlanjut dengan nuansa yang semakin dalam. Tantangan baru muncul, namun semangat untuk memahami cerita tetap terjaga.</p>
-                    <p>Pratinjau ini membantu petugas memastikan koleksi dapat dibuka dan dinavigasi dengan nyaman sebelum disajikan kepada pembaca.</p>
+                    <p>{t('admin.books.preview4')}</p>
+                    <p>{t('admin.books.preview5')}</p>
                   </>
                 )}
                 <div className="flex justify-center py-12"><span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mx-1"></span><span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mx-1"></span><span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600 mx-1"></span></div>
               </div>
               <div className="mt-20 pt-10 border-t border-[#d7e3da] dark:border-[#2a3d34] flex justify-between items-center pb-20 font-sans">
-                <button onClick={() => { if (currentChapter > 1) { setIsTransitioning(true); setTimeout(() => { setCurrentChapter(p => p - 1); setIsTransitioning(false); }, 150); } }} disabled={currentChapter === 1} className={`px-6 py-3 border border-[#d7e3da] dark:border-[#2a3d34] font-medium rounded-xl ${currentChapter === 1 ? 'text-[#8eab9b] cursor-not-allowed' : 'text-[#355243] dark:text-[#dcebe2] hover:bg-[#edf4ef] dark:hover:bg-[#1b2923] bg-white dark:bg-[#182621]'}`}>Bab Sebelumnya</button>
-                <button onClick={() => { if (currentChapter < totalChapters) { setIsTransitioning(true); setTimeout(() => { setCurrentChapter(p => p + 1); setIsTransitioning(false); }, 150); } }} disabled={currentChapter === totalChapters} className={`px-6 py-3 font-medium rounded-xl ${currentChapter === totalChapters ? 'border border-[#d7e3da] dark:border-[#2a3d34] text-[#8eab9b] cursor-not-allowed' : 'bg-[#163126] text-[#f4fbf7] hover:bg-[#204437]'}`}>Bab Selanjutnya</button>
+                <button onClick={() => { if (currentChapter > 1) { setIsTransitioning(true); setTimeout(() => { setCurrentChapter(p => p - 1); setIsTransitioning(false); }, 150); } }} disabled={currentChapter === 1} className={`px-6 py-3 border border-[#d7e3da] dark:border-[#2a3d34] font-medium rounded-xl ${currentChapter === 1 ? 'text-[#8eab9b] cursor-not-allowed' : 'text-[#355243] dark:text-[#dcebe2] hover:bg-[#edf4ef] dark:hover:bg-[#1b2923] bg-white dark:bg-[#182621]'}`}>{t('admin.books.prevChapter')}</button>
+                <button onClick={() => { if (currentChapter < totalChapters) { setIsTransitioning(true); setTimeout(() => { setCurrentChapter(p => p + 1); setIsTransitioning(false); }, 150); } }} disabled={currentChapter === totalChapters} className={`px-6 py-3 font-medium rounded-xl ${currentChapter === totalChapters ? 'border border-[#d7e3da] dark:border-[#2a3d34] text-[#8eab9b] cursor-not-allowed' : 'bg-[#163126] text-[#f4fbf7] hover:bg-[#204437]'}`}>{t('admin.books.nextChapter')}</button>
               </div>
             </div>
           </div>
