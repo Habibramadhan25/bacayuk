@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import type { Book } from '../lib/mockData';
 import { Star, MessageSquare, Search } from 'lucide-react';
 import { handleBookCoverError, resolveBookCover } from '../lib/bookCover';
